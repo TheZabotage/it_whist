@@ -7,6 +7,19 @@
 # General application configuration
 import Config
 
+config :it_whist, :scopes,
+  account: [
+    default: true,
+    module: ItWhist.Accounts.Scope,
+    assign_key: :current_scope,
+    access_path: [:account, :id],
+    schema_key: :account_id,
+    schema_type: :id,
+    schema_table: :accounts,
+    test_data_fixture: ItWhist.AccountsFixtures,
+    test_setup_helper: :register_and_log_in_account
+  ]
+
 config :it_whist,
   ecto_repos: [ItWhist.Repo],
   generators: [timestamp_type: :utc_datetime]

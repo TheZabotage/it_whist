@@ -35,4 +35,45 @@ defmodule ItWhistWeb.ConnCase do
     ItWhist.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
+
+  @doc """
+  Setup helper that registers and logs in accounts.
+
+      setup :register_and_log_in_account
+
+  It stores an updated connection and a registered account in the
+  test context.
+  """
+  def register_and_log_in_account(%{conn: conn} = context) do
+    account = ItWhist.AccountsFixtures.account_fixture()
+    scope = ItWhist.Accounts.Scope.for_account(account)
+
+    opts =
+      context
+      |> Map.take([:token_authenticated_at])
+      |> Enum.into([])
+
+    %{conn: log_in_account(conn, account, opts), account: account, scope: scope}
+  end
+
+  @doc """
+  Logs the given `account` into the `conn`.
+
+  It returns an updated `conn`.
+  """
+  def log_in_account(conn, account, opts \\ []) do
+    token = ItWhist.Accounts.generate_account_session_token(account)
+
+    maybe_set_token_authenticated_at(token, opts[:token_authenticated_at])
+
+    conn
+    |> Phoenix.ConnTest.init_test_session(%{})
+    |> Plug.Conn.put_session(:account_token, token)
+  end
+
+  defp maybe_set_token_authenticated_at(_token, nil), do: nil
+
+  defp maybe_set_token_authenticated_at(token, authenticated_at) do
+    ItWhist.AccountsFixtures.override_token_authenticated_at(token, authenticated_at)
+  end
 end
