@@ -8,7 +8,7 @@ defmodule ItWhist.Games.Round do
 
   schema "rounds" do
     field :game_type, :string, default: "Alm"
-    field :round_number, :integer, default: 1
+    field :round_number, :integer, default: 0
 
     belongs_to :game, Game
     has_many :bets, Bet
