@@ -42,7 +42,7 @@ defmodule ItWhistWeb.GameLive.Show do
 
       <%= if @game.status == "in_progress" do %>
         <div class="mt-6">
-          <.button variant="primary" navigate={~p"/games/#{@game}/rounds/new"}>
+          <.button variant="primary">
             Log Round
           </.button>
         </div>

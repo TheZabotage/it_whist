@@ -99,7 +99,12 @@ defmodule ItWhist.Games do
   # Bet Functions
   def place_bet(%Round{} = round, attrs) do
     %Bet{}
-    |> Bet.changeset(Map.put(attrs, :round_id, round.id))
+    |> Bet.changeset(
+      Map.merge(attrs, %{
+        round_id: round.id,
+        game_type: round.game_type
+      })
+    )
     |> Repo.insert()
   end
 
