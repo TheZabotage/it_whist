@@ -8,6 +8,8 @@ defmodule ItWhist.Games do
   alias ItWhist.Accounts.Scope
   alias ItWhist.Games.{Bet, Game, GamePlayer, Round, RoundScore}
 
+  def subscribe_games(_scope), do: :ok
+
   # Game Functions
   def list_games do
     Repo.all(from g in Game, order_by: [desc: g.inserted_at])
@@ -32,10 +34,28 @@ defmodule ItWhist.Games do
     end)
   end
 
+  def change_game(%Game{} = game, attrs \\ %{}) do
+    Game.changeset(game, attrs)
+  end
+
+  def update_game(%Game{} = game, attrs) do
+    game
+    |> Game.changeset(attrs)
+    |> Repo.update()
+  end
+
   def complete_game(%Game{} = game) do
     game
     |> Game.changeset(%{status: "completed"})
     |> Repo.update()
+  end
+
+  def list_games(_scope) do
+    Repo.all(from g in Game, order_by: [desc: g.inserted_at])
+  end
+
+  def delete_game(%Game{} = game) do
+    Repo.delete(game)
   end
 
   # GamePlayer Functions

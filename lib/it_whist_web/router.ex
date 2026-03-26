@@ -23,6 +23,17 @@ defmodule ItWhistWeb.Router do
     get "/", PageController, :home
   end
 
+  # Public - anyone can view games
+  scope "/", ItWhistWeb do
+    pipe_through [:browser]
+
+    live_session :public,
+      on_mount: [{ItWhistWeb.AccountAuth, :mount_current_scope}] do
+      live "/games", GameLive.Index, :index
+      live "/games/:id", GameLive.Show, :show
+    end
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", ItWhistWeb do
   #   pipe_through :api
@@ -47,6 +58,7 @@ defmodule ItWhistWeb.Router do
 
   ## Authentication routes
 
+  # Authenticated - must be logged in to create/edit
   scope "/", ItWhistWeb do
     pipe_through [:browser, :require_authenticated_account]
 
@@ -54,6 +66,8 @@ defmodule ItWhistWeb.Router do
       on_mount: [{ItWhistWeb.AccountAuth, :require_authenticated}] do
       live "/accounts/settings", AccountLive.Settings, :edit
       live "/accounts/settings/confirm-email/:token", AccountLive.Settings, :confirm_email
+      live "/games/new", GameLive.Form, :new
+      live "/games/:id/edit", GameLive.Form, :edit
     end
 
     post "/accounts/update-password", AccountSessionController, :update_password

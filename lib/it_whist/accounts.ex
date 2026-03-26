@@ -27,6 +27,22 @@ defmodule ItWhist.Accounts do
   end
 
   @doc """
+  Gets all accounts except the ones already "chosen".
+
+  """
+  def search_accounts(query, exclude_ids \\ []) do
+    search = "%#{query}%"
+
+    Repo.all(
+      from a in Account,
+        where:
+          (ilike(a.name, ^search) or ilike(a.nickname, ^search)) and
+            a.id not in ^exclude_ids,
+        limit: 5
+    )
+  end
+
+  @doc """
   Gets a account by email and password.
 
   ## Examples
