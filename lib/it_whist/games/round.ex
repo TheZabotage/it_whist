@@ -4,7 +4,16 @@ defmodule ItWhist.Games.Round do
 
   alias ItWhist.Games.{Game, Bet, RoundScore}
 
-  @valid_game_types ["Alm", "Vip", "Halve", "Sans", "Gode", "Sol", "Ren Sol"]
+  @valid_game_types [
+    "Alm",
+    "Vip",
+    "Halve",
+    "Sans",
+    "Gode",
+    "Sol",
+    "Ren Sol",
+    "Ren Sol Bordlægger"
+  ]
 
   schema "rounds" do
     field :game_type, :string, default: "Alm"

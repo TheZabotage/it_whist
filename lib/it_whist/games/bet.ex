@@ -10,16 +10,18 @@ defmodule ItWhist.Games.Bet do
     field :partner_ace, :string
     field :trumf_suit, :string
     field :game_type, :string, virtual: true
+    field :is_self_partner, :boolean, default: false
 
+    belongs_to :partner_game_player, GamePlayer, foreign_key: :partner_game_player_id
     belongs_to :round, Round
     belongs_to :game_player, GamePlayer
 
     timestamps(type: :utc_datetime)
   end
 
-  @doc false
   @valid_suits ["Spades", "Hearts", "Clubs", "Diamonds"]
 
+  @doc false
   def changeset(bet, attrs) do
     bet
     |> cast(attrs, [
@@ -29,7 +31,9 @@ defmodule ItWhist.Games.Bet do
       :sets_won,
       :partner_ace,
       :trumf_suit,
-      :game_type
+      :game_type,
+      :partner_game_player_id,
+      :is_self_partner
     ])
     |> validate_required([:round_id, :game_player_id, :sets_bid])
     |> validate_inclusion(:partner_ace, @valid_suits)
@@ -37,11 +41,12 @@ defmodule ItWhist.Games.Bet do
     |> validate_partner_rules()
     |> foreign_key_constraint(:round_id)
     |> foreign_key_constraint(:game_player_id)
+    |> foreign_key_constraint(:partner_game_player_id)
   end
 
   defp validate_partner_rules(changeset) do
     case get_field(changeset, :game_type) do
-      t when t in ["Sol", "Ren Sol"] ->
+      t when t in ["Sol", "Ren Sol", "Ren Sol Bordlægger"] ->
         changeset
         |> delete_change(:partner_ace)
         |> delete_change(:trumf_suit)
@@ -53,13 +58,8 @@ defmodule ItWhist.Games.Bet do
 
       "Gode" ->
         changeset
-
-      "Gode" ->
-        changeset
-        # ← partner ace IS declared in Gode
         |> validate_required([:partner_ace])
-        # trumf is always Klør, don't store
-        |> delete_change(:trumf_suit)
+        |> put_change(:trumf_suit, "Clubs")
 
       t when t in ["Alm", "Vip", "Halve"] ->
         changeset
