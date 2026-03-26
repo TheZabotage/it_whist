@@ -16,7 +16,12 @@ defmodule ItWhist.Games do
   end
 
   def get_game!(id) do
-    Repo.get!(Game, id)
+    Game
+    |> Repo.get!(id)
+    |> Repo.preload([
+      :rounds,
+      game_players: [:player]
+    ])
   end
 
   def create_game(%Scope{} = scope, attrs \\ %{}) do
