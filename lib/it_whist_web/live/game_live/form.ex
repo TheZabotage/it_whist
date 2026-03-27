@@ -169,7 +169,7 @@ defmodule ItWhistWeb.GameLive.Form do
           {:noreply,
            socket
            |> put_flash(:info, "Game started!")
-           |> push_navigate(to: ~p"/games/#{game}")}
+           |> push_navigate(to: ~p"/games/#{game}/view")}
 
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, "Could not create game.")}

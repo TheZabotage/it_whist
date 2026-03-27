@@ -30,7 +30,7 @@ defmodule ItWhistWeb.Router do
     live_session :public,
       on_mount: [{ItWhistWeb.AccountAuth, :mount_current_scope}] do
       live "/games", GameLive.Index, :index
-      live "/games/:id", GameLive.Show, :show
+      live "/games/:id", GameLive.Index, :show
     end
   end
 
@@ -68,6 +68,7 @@ defmodule ItWhistWeb.Router do
       live "/accounts/settings/confirm-email/:token", AccountLive.Settings, :confirm_email
       live "/games/new", GameLive.Form, :new
       live "/games/:id/edit", GameLive.Form, :edit
+      live "/games/:id/view", GameLive.Show, :show
     end
 
     post "/accounts/update-password", AccountSessionController, :update_password

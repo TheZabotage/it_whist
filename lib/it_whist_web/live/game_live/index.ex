@@ -19,7 +19,7 @@ defmodule ItWhistWeb.GameLive.Index do
       <.table
         id="games"
         rows={@streams.games}
-        row_click={fn {_id, game} -> JS.navigate(~p"/games/#{game}") end}
+        row_click={fn {_id, game} -> JS.navigate(~p"/games/#{game}/view") end}
       >
         <:col :let={{_id, game}} label="Status">{game.status}</:col>
         <:col :let={{_id, game}} label="Played at">{game.played_at}</:col>
