@@ -131,4 +131,14 @@ defmodule ItWhist.Games do
     )
     |> Repo.insert()
   end
+
+  def record_scores_for_round(%Round{} = round, scores) do
+    # scores is a list of %{game_player_id: id, score: points}
+    Repo.transact(fn ->
+      Enum.each(scores, fn %{game_player_id: gp_id, score: score} ->
+        game_player = Repo.get!(GamePlayer, gp_id)
+        record_score(round, game_player, %{score: score})
+      end)
+    end)
+  end
 end

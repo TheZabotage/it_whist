@@ -12,7 +12,8 @@ defmodule ItWhist.Games.Round do
     "Gode",
     "Sol",
     "Ren Sol",
-    "Ren Sol Bordlægger"
+    "Bordlægger",
+    "Super Bordlægger"
   ]
 
   schema "rounds" do
