@@ -21,7 +21,7 @@ defmodule ItWhist.Games.Round do
     field :round_number, :integer, default: 0
 
     belongs_to :game, Game
-    has_many :bets, Bet
+    has_one :bet, Bet
     has_many :round_scores, RoundScore
 
     timestamps(type: :utc_datetime)
@@ -34,5 +34,8 @@ defmodule ItWhist.Games.Round do
     |> validate_required([:game_type, :round_number, :game_id])
     |> validate_inclusion(:game_type, @valid_game_types)
     |> foreign_key_constraint(:game_id)
+    |> unique_constraint([:game_id, :round_number],
+      name: :rounds_game_id_round_number_index
+    )
   end
 end

@@ -12,16 +12,29 @@ defmodule ItWhist.Games do
 
   # Game Functions
   def list_games do
-    Repo.all(from g in Game, order_by: [desc: g.inserted_at])
+    Repo.all(
+      from g in Game,
+        order_by: [desc: g.inserted_at],
+        preload: [game_players: [:player]]
+    )
+  end
+
+  # also update the scoped version:
+  def list_games(_scope) do
+    Repo.all(
+      from g in Game,
+        order_by: [desc: g.inserted_at],
+        preload: [game_players: [:player]]
+    )
   end
 
   def get_game!(id) do
     Game
     |> Repo.get!(id)
-    |> Repo.preload([
-      :rounds,
-      game_players: [:player]
-    ])
+    |> Repo.preload(
+      game_players: [:player],
+      rounds: [bet: [game_player: [:player], partner_game_player: [:player]]]
+    )
   end
 
   def create_game(%Scope{} = scope, attrs \\ %{}) do
@@ -49,19 +62,25 @@ defmodule ItWhist.Games do
     |> Repo.update()
   end
 
-  def complete_game(%Game{} = game) do
+  def complete_game(%Game{} = game, played_at \\ nil) do
     game
-    |> Game.changeset(%{status: "completed"})
+    |> Game.changeset(%{
+      "status" => "completed",
+      "played_at" => played_at || DateTime.utc_now()
+    })
     |> Repo.update()
-  end
-
-  def list_games(_scope) do
-    Repo.all(from g in Game, order_by: [desc: g.inserted_at])
   end
 
   def delete_game(%Game{} = game) do
     Repo.delete(game)
   end
+
+  # in games.ex
+  def game_owner?(%Game{} = game, %Scope{} = scope) do
+    game.created_by == scope.account.id
+  end
+
+  def game_owner?(_, _), do: false
 
   # GamePlayer Functions
   def add_player(%Game{} = game, player_id) do
@@ -88,12 +107,47 @@ defmodule ItWhist.Games do
       %Round{}
       |> Round.changeset(
         Map.merge(attrs, %{
-          game_id: game.id,
-          round_number: round_count + 1
+          "game_id" => game.id,
+          "round_number" => round_count + 1
         })
       )
       |> Repo.insert()
     end
+  end
+
+  def get_round!(id), do: Repo.get!(Round, id)
+
+  def delete_round(%Round{} = round) do
+    round_with_data = Repo.preload(round, bet: [], round_scores: [:game_player])
+
+    Repo.transact(fn ->
+      # Reverse scores for each player
+      Enum.each(round_with_data.round_scores, fn rs ->
+        game_player = rs.game_player
+        update_player_score(game_player, -rs.score)
+      end)
+
+      # Delete the round (cascades to bet and round_scores)
+      with {:ok, _} <- Repo.delete(round) do
+        # Renumber remaining rounds
+        remaining_rounds =
+          Repo.all(
+            from r in Round,
+              where: r.game_id == ^round.game_id,
+              order_by: r.round_number
+          )
+
+        remaining_rounds
+        |> Enum.with_index(1)
+        |> Enum.each(fn {r, new_number} ->
+          r
+          |> Round.changeset(%{"round_number" => new_number})
+          |> Repo.update!()
+        end)
+
+        {:ok, round}
+      end
+    end)
   end
 
   # Bet Functions
@@ -101,8 +155,8 @@ defmodule ItWhist.Games do
     %Bet{}
     |> Bet.changeset(
       Map.merge(attrs, %{
-        round_id: round.id,
-        game_type: round.game_type
+        "round_id" => round.id,
+        "game_type" => round.game_type
       })
     )
     |> Repo.insert()
@@ -125,20 +179,26 @@ defmodule ItWhist.Games do
     %RoundScore{}
     |> RoundScore.changeset(
       Map.merge(attrs, %{
-        round_id: round.id,
-        game_player_id: game_player.id
+        "round_id" => round.id,
+        "game_player_id" => game_player.id
       })
     )
     |> Repo.insert()
   end
 
   def record_scores_for_round(%Round{} = round, scores) do
-    # scores is a list of %{game_player_id: id, score: points}
     Repo.transact(fn ->
       Enum.each(scores, fn %{game_player_id: gp_id, score: score} ->
         game_player = Repo.get!(GamePlayer, gp_id)
-        record_score(round, game_player, %{score: score})
+        # ← string key
+        record_score(round, game_player, %{"score" => score})
       end)
     end)
+  end
+
+  def update_player_score(%GamePlayer{} = game_player, points) do
+    game_player
+    |> GamePlayer.changeset(%{"final_score" => game_player.final_score + points})
+    |> Repo.update()
   end
 end

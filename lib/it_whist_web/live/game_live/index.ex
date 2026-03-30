@@ -8,7 +8,7 @@ defmodule ItWhistWeb.GameLive.Index do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <.header>
-        Listing Games
+        All Games
         <:actions>
           <.button variant="primary" navigate={~p"/games/new"}>
             <.icon name="hero-plus" /> New Game
@@ -19,23 +19,32 @@ defmodule ItWhistWeb.GameLive.Index do
       <.table
         id="games"
         rows={@streams.games}
-        row_click={fn {_id, game} -> JS.navigate(~p"/games/#{game}/view") end}
+        row_click={fn {_id, game} -> JS.navigate(~p"/games/#{game}") end}
       >
         <:col :let={{_id, game}} label="Status">{game.status}</:col>
-        <:col :let={{_id, game}} label="Played at">{game.played_at}</:col>
+        <:col :let={{_id, game}} label="Played at">
+          {if game.played_at, do: Calendar.strftime(game.played_at, "%d. %b %Y"), else: "—"}
+        </:col>
+        <:col :let={{_id, game}} label="Players">
+          {Enum.map_join(game.game_players, " | ", fn gp -> gp.player.nickname end)}
+        </:col>
         <:action :let={{_id, game}}>
           <div class="sr-only">
             <.link navigate={~p"/games/#{game}"}>Show</.link>
           </div>
-          <.link navigate={~p"/games/#{game}/edit"}>Edit</.link>
+          <%= if Games.game_owner?(game, @current_scope) do %>
+            <.link navigate={~p"/games/#{game}/edit"}>Edit</.link>
+          <% end %>
         </:action>
         <:action :let={{id, game}}>
-          <.link
-            phx-click={JS.push("delete", value: %{id: game.id}) |> hide("##{id}")}
-            data-confirm="Are you sure?"
-          >
-            Delete
-          </.link>
+          <%= if Games.game_owner?(game, @current_scope) do %>
+            <.link
+              phx-click={JS.push("delete", value: %{id: game.id}) |> hide("##{id}")}
+              data-confirm="Are you sure?"
+            >
+              Delete
+            </.link>
+          <% end %>
         </:action>
       </.table>
     </Layouts.app>
@@ -50,16 +59,20 @@ defmodule ItWhistWeb.GameLive.Index do
 
     {:ok,
      socket
-     |> assign(:page_title, "Listing Games")
+     |> assign(:page_title, "All Games")
      |> stream(:games, list_games(socket.assigns.current_scope))}
   end
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     game = Games.get_game!(id)
-    {:ok, _} = Games.delete_game(game)
 
-    {:noreply, stream_delete(socket, :games, game)}
+    if Games.game_owner?(game, socket.assigns.current_scope) do
+      {:ok, _} = Games.delete_game(game)
+      {:noreply, stream_delete(socket, :games, game)}
+    else
+      {:noreply, put_flash(socket, :error, "You don't have permission to do that.")}
+    end
   end
 
   @impl true
