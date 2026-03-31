@@ -110,23 +110,19 @@ defmodule ItWhistWeb.GameLive.Show do
 
   @impl true
   def handle_event("delete_round", %{"id" => id}, socket) do
-    if Games.game_owner?(socket.assigns.game, socket.assigns.current_scope) do
+    with_owner_check(socket, fn ->
       round = Games.get_round!(id)
       {:ok, _} = Games.delete_round(round)
       {:noreply, assign(socket, :game, Games.get_game!(socket.assigns.game.id))}
-    else
-      {:noreply, put_flash(socket, :error, "You don't have permission to do that.")}
-    end
+    end)
   end
 
   @impl true
   def handle_event("complete_game", _params, socket) do
-    if Games.game_owner?(socket.assigns.game, socket.assigns.current_scope) do
-      {:ok, _} = Games.complete_game(socket.assigns.game, DateTime.utc_now())
+    with_owner_check(socket, fn ->
+      {:ok, _} = Games.complete_game(socket.assigns.game)
       {:noreply, assign(socket, :game, Games.get_game!(socket.assigns.game.id))}
-    else
-      {:noreply, put_flash(socket, :error, "You don't have permission to do that.")}
-    end
+    end)
   end
 
   @impl true
@@ -152,9 +148,22 @@ defmodule ItWhistWeb.GameLive.Show do
     {:noreply, socket}
   end
 
+  # ---------------------------------------------------------------------------
+  # Private helpers
+  # ---------------------------------------------------------------------------
+
+  # Runs the given function only if the current user owns the game,
+  # otherwise returns a permission error flash.
+  defp with_owner_check(socket, fun) do
+    if Games.game_owner?(socket.assigns.game, socket.assigns.current_scope) do
+      fun.()
+    else
+      {:noreply, put_flash(socket, :error, "You don't have permission to do that.")}
+    end
+  end
+
   defp game_completable?(game) do
-    round_count = length(game.rounds)
     all_resolved = Enum.all?(game.rounds, fn r -> r.bet && r.bet.sets_won != nil end)
-    round_count == 4 && all_resolved
+    length(game.rounds) == 4 && all_resolved
   end
 end

@@ -26,15 +26,12 @@ defmodule ItWhistWeb.GameLive.Index do
           {if game.played_at, do: Calendar.strftime(game.played_at, "%d. %b %Y"), else: "—"}
         </:col>
         <:col :let={{_id, game}} label="Players">
-          {Enum.map_join(game.game_players, " | ", fn gp -> gp.player.nickname end)}
+          | {Enum.map_join(game.game_players, " | ", fn gp -> gp.player.nickname end)} |
         </:col>
         <:action :let={{_id, game}}>
           <div class="sr-only">
             <.link navigate={~p"/games/#{game}"}>Show</.link>
           </div>
-          <%= if Games.game_owner?(game, @current_scope) do %>
-            <.link navigate={~p"/games/#{game}/edit"}>Edit</.link>
-          <% end %>
         </:action>
         <:action :let={{id, game}}>
           <%= if Games.game_owner?(game, @current_scope) do %>
@@ -60,7 +57,7 @@ defmodule ItWhistWeb.GameLive.Index do
     {:ok,
      socket
      |> assign(:page_title, "All Games")
-     |> stream(:games, list_games(socket.assigns.current_scope))}
+     |> stream(:games, Games.list_games(socket.assigns.current_scope))}
   end
 
   @impl true
@@ -78,10 +75,7 @@ defmodule ItWhistWeb.GameLive.Index do
   @impl true
   def handle_info({type, %ItWhist.Games.Game{}}, socket)
       when type in [:created, :updated, :deleted] do
-    {:noreply, stream(socket, :games, list_games(socket.assigns.current_scope), reset: true)}
-  end
-
-  defp list_games(current_scope) do
-    Games.list_games(current_scope)
+    {:noreply,
+     stream(socket, :games, Games.list_games(socket.assigns.current_scope), reset: true)}
   end
 end

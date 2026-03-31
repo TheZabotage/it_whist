@@ -109,16 +109,18 @@ defmodule ItWhistWeb.GameLive.Form do
     """
   end
 
-  # Search handlers
+  # ---------------------------------------------------------------------------
+  # Event handlers
+  # ---------------------------------------------------------------------------
+
   @impl true
   def handle_event("search_player", %{"_target" => [target]} = params, socket) do
     slot = target |> String.replace("player_", "") |> String.replace("_search", "")
     query = Map.get(params, target, "")
-    exclude_ids = excluded_ids(socket)
 
     results =
       if String.length(query) > 0,
-        do: Accounts.search_accounts(query, exclude_ids),
+        do: Accounts.search_accounts(query, excluded_ids(socket)),
         else: []
 
     {:noreply,
@@ -127,7 +129,6 @@ defmodule ItWhistWeb.GameLive.Form do
      |> assign(:"player_#{slot}_search", query)}
   end
 
-  # Select handler
   def handle_event("select_player_" <> slot, %{"id" => id}, socket) do
     slot = String.to_integer(slot)
     account = Accounts.get_account!(String.to_integer(id))
@@ -139,7 +140,6 @@ defmodule ItWhistWeb.GameLive.Form do
      |> assign(:"player_#{slot}_search", "")}
   end
 
-  # Clear handlers
   def handle_event("clear_player_" <> slot, _params, socket) do
     slot = String.to_integer(slot)
 
@@ -149,7 +149,6 @@ defmodule ItWhistWeb.GameLive.Form do
      |> assign(:"player_#{slot}_search", "")}
   end
 
-  # Submit
   def handle_event("create_game", _params, socket) do
     selected = [
       socket.assigns.player_1_selected,
@@ -160,22 +159,24 @@ defmodule ItWhistWeb.GameLive.Form do
     if Enum.any?(selected, &is_nil/1) do
       {:noreply, put_flash(socket, :error, "Please select all 3 players.")}
     else
-      case Games.create_game(socket.assigns.current_scope, %{}) do
-        {:ok, game} ->
-          Enum.each(selected, fn player ->
-            Games.add_player(game, player.id)
-          end)
+      player_ids = Enum.map(selected, & &1.id)
 
+      case Games.create_game_with_players(socket.assigns.current_scope, player_ids) do
+        {:ok, game} ->
           {:noreply,
            socket
            |> put_flash(:info, "Game started!")
            |> push_navigate(to: ~p"/games/#{game}")}
 
-        {:error, _changeset} ->
+        {:error, _reason} ->
           {:noreply, put_flash(socket, :error, "Could not create game.")}
       end
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # Private helpers
+  # ---------------------------------------------------------------------------
 
   defp excluded_ids(socket) do
     [

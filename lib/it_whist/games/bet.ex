@@ -2,7 +2,7 @@ defmodule ItWhist.Games.Bet do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias ItWhist.Games.{Round, GamePlayer}
+  alias ItWhist.Games.{Round, GamePlayer, Scoring}
 
   schema "bets" do
     field :sets_bid, :integer
@@ -19,8 +19,6 @@ defmodule ItWhist.Games.Bet do
     timestamps(type: :utc_datetime)
   end
 
-  @valid_suits ["Spades", "Hearts", "Clubs", "Diamonds"]
-
   @doc false
   def changeset(bet, attrs) do
     bet
@@ -36,8 +34,8 @@ defmodule ItWhist.Games.Bet do
       :is_self_partner
     ])
     |> validate_required([:round_id, :game_player_id, :sets_bid])
-    |> validate_inclusion(:partner_ace, @valid_suits)
-    |> validate_inclusion(:trumf_suit, @valid_suits)
+    |> validate_inclusion(:partner_ace, Scoring.all_suits())
+    |> validate_inclusion(:trumf_suit, Scoring.all_suits())
     |> validate_partner_rules()
     |> foreign_key_constraint(:round_id)
     |> foreign_key_constraint(:game_player_id)
@@ -46,7 +44,7 @@ defmodule ItWhist.Games.Bet do
 
   defp validate_partner_rules(changeset) do
     case get_field(changeset, :game_type) do
-      t when t in ["Sol", "Ren Sol", "Ren Sol Bordlægger"] ->
+      t when t in ["Sol", "Ren Sol", "Bordlægger", "Super Bordlægger"] ->
         changeset
         |> delete_change(:partner_ace)
         |> delete_change(:trumf_suit)

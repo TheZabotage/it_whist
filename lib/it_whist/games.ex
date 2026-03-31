@@ -1,26 +1,40 @@
 defmodule ItWhist.Games do
   @moduledoc """
-  The Game context.
+  The Games context — public API for all game-related operations.
   """
 
   import Ecto.Query, warn: false
   alias ItWhist.Repo
   alias ItWhist.Accounts.Scope
-  alias ItWhist.Games.{Bet, Game, GamePlayer, Round, RoundScore}
+  alias ItWhist.Games.{Bet, Game, GamePlayer, Round, RoundScore, Scoring}
+  alias ItWhist.Accounts.Account
 
+  # TODO: implement PubSub broadcasts
   def subscribe_games(_scope), do: :ok
 
-  # Game Functions
-  def list_games do
+  # ---------------------------------------------------------------------------
+  # Leaderboard Functions
+  # ---------------------------------------------------------------------------
+  def leaderboard do
     Repo.all(
-      from g in Game,
-        order_by: [desc: g.inserted_at],
-        preload: [game_players: [:player]]
+      from a in Account,
+        left_join: gp in GamePlayer,
+        on: gp.player_id == a.id,
+        group_by: a.id,
+        select: %{
+          account: a,
+          total_score: sum(gp.final_score),
+          games_played: count(gp.id)
+        },
+        order_by: [desc_nulls_last: sum(gp.final_score)]
     )
   end
 
-  # also update the scoped version:
-  def list_games(_scope) do
+  # ---------------------------------------------------------------------------
+  # Game Functions
+  # ---------------------------------------------------------------------------
+
+  def list_games(%Scope{} = _scope) do
     Repo.all(
       from g in Game,
         order_by: [desc: g.inserted_at],
@@ -52,6 +66,65 @@ defmodule ItWhist.Games do
     end)
   end
 
+  @doc """
+  Creates a game and adds both the creator and a list of additional player IDs
+  in a single transaction. If any player insertion fails the whole game is
+  rolled back.
+  """
+  def create_game_with_players(%Scope{} = scope, player_ids, attrs \\ %{})
+      when is_list(player_ids) do
+    Repo.transact(fn ->
+      with {:ok, game} <- create_game(scope, attrs) do
+        results =
+          Enum.map(player_ids, fn player_id ->
+            %GamePlayer{}
+            |> GamePlayer.changeset(%{game_id: game.id, player_id: player_id})
+            |> Repo.insert()
+          end)
+
+        case Enum.find(results, fn r -> match?({:error, _}, r) end) do
+          nil -> {:ok, game}
+          {:error, changeset} -> {:error, changeset}
+        end
+      end
+    end)
+  end
+
+  @doc """
+  Creates a round, places the bet, and resolves it all in one atomic transaction.
+  Nothing is written to the DB until both stages are complete and valid.
+  """
+  def log_round(%Game{} = game, bet_attrs, resolve_attrs) do
+    %{
+      sets_won: sets_won,
+      is_self_partner: is_self_partner,
+      partner_game_player_id: partner_game_player_id
+    } = resolve_attrs
+
+    Repo.transact(fn ->
+      with {:ok, round} <- add_round(game, %{"game_type" => bet_attrs["game_type"]}),
+           {:ok, bet} <- place_bet(round, bet_attrs),
+           scores = Scoring.calculate(round.game_type, bet.sets_bid, sets_won, is_self_partner),
+           {:ok, _bet} <-
+             resolve_bet(bet, %{
+               "sets_won" => sets_won,
+               "is_self_partner" => is_self_partner,
+               "partner_game_player_id" => partner_game_player_id
+             }),
+           :ok <-
+             record_round_scores(
+               round,
+               game.game_players,
+               bet.game_player_id,
+               partner_game_player_id,
+               scores,
+               is_self_partner
+             ) do
+        {:ok, round}
+      end
+    end)
+  end
+
   def change_game(%Game{} = game, attrs \\ %{}) do
     Game.changeset(game, attrs)
   end
@@ -62,33 +135,35 @@ defmodule ItWhist.Games do
     |> Repo.update()
   end
 
-  def complete_game(%Game{} = game, played_at \\ nil) do
+  def complete_game(%Game{} = game, %DateTime{} = played_at) do
     game
-    |> Game.changeset(%{
-      "status" => "completed",
-      "played_at" => played_at || DateTime.utc_now()
-    })
+    |> Game.changeset(%{"status" => "completed", "played_at" => played_at})
     |> Repo.update()
   end
+
+  def complete_game(%Game{} = game), do: complete_game(game, DateTime.utc_now())
 
   def delete_game(%Game{} = game) do
     Repo.delete(game)
   end
 
-  # in games.ex
   def game_owner?(%Game{} = game, %Scope{} = scope) do
     game.created_by == scope.account.id
   end
 
   def game_owner?(_, _), do: false
 
+  # ---------------------------------------------------------------------------
   # GamePlayer Functions
-  def add_player(%Game{} = game, player_id) do
-    player_count =
-      Repo.aggregate(from(gp in GamePlayer, where: gp.game_id == ^game.id), :count)
+  # ---------------------------------------------------------------------------
 
-    if player_count >= 4 do
-      {:error, "game already has 4 players"}
+  @max_players 4
+
+  def add_player(%Game{} = game, player_id) do
+    player_count = Repo.aggregate(from(gp in GamePlayer, where: gp.game_id == ^game.id), :count)
+
+    if player_count >= @max_players do
+      {:error, "game already has #{@max_players} players"}
     else
       %GamePlayer{}
       |> GamePlayer.changeset(%{game_id: game.id, player_id: player_id})
@@ -96,13 +171,17 @@ defmodule ItWhist.Games do
     end
   end
 
+  # ---------------------------------------------------------------------------
   # Round Functions
-  def add_round(%Game{} = game, attrs \\ %{}) do
-    round_count =
-      Repo.aggregate(from(r in Round, where: r.game_id == ^game.id), :count)
+  # ---------------------------------------------------------------------------
 
-    if round_count >= 4 do
-      {:error, "game already has 4 rounds"}
+  @max_rounds 4
+
+  def add_round(%Game{} = game, attrs \\ %{}) do
+    round_count = Repo.aggregate(from(r in Round, where: r.game_id == ^game.id), :count)
+
+    if round_count >= @max_rounds do
+      {:error, "game already has #{@max_rounds} rounds"}
     else
       %Round{}
       |> Round.changeset(
@@ -121,23 +200,16 @@ defmodule ItWhist.Games do
     round_with_data = Repo.preload(round, bet: [], round_scores: [:game_player])
 
     Repo.transact(fn ->
-      # Reverse scores for each player
       Enum.each(round_with_data.round_scores, fn rs ->
-        game_player = rs.game_player
-        update_player_score(game_player, -rs.score)
+        update_player_score(rs.game_player, -rs.score)
       end)
 
-      # Delete the round (cascades to bet and round_scores)
       with {:ok, _} <- Repo.delete(round) do
-        # Renumber remaining rounds
-        remaining_rounds =
-          Repo.all(
-            from r in Round,
-              where: r.game_id == ^round.game_id,
-              order_by: r.round_number
-          )
-
-        remaining_rounds
+        Repo.all(
+          from r in Round,
+            where: r.game_id == ^round.game_id,
+            order_by: r.round_number
+        )
         |> Enum.with_index(1)
         |> Enum.each(fn {r, new_number} ->
           r
@@ -150,7 +222,10 @@ defmodule ItWhist.Games do
     end)
   end
 
+  # ---------------------------------------------------------------------------
   # Bet Functions
+  # ---------------------------------------------------------------------------
+
   def place_bet(%Round{} = round, attrs) do
     %Bet{}
     |> Bet.changeset(
@@ -174,7 +249,51 @@ defmodule ItWhist.Games do
     |> Repo.update()
   end
 
-  # RoundScore Funtions
+  @doc """
+  Resolves a round end-to-end in a single transaction:
+    - updates the bet with sets_won, is_self_partner, partner_game_player_id
+    - calculates scores via Scoring.calculate/4
+    - records a RoundScore for every player in the game
+    - updates each player's running final_score
+
+  Accepts a plain map with atom keys:
+    %{sets_won: int, is_self_partner: bool, partner_game_player_id: int | nil}
+  """
+  def resolve_round(%Round{} = round, %Bet{} = bet, attrs) do
+    %{
+      sets_won: sets_won,
+      is_self_partner: is_self_partner,
+      partner_game_player_id: partner_game_player_id
+    } = attrs
+
+    game_players = Repo.all(from gp in GamePlayer, where: gp.game_id == ^round.game_id)
+    scores = Scoring.calculate(round.game_type, bet.sets_bid, sets_won, is_self_partner)
+
+    Repo.transact(fn ->
+      with {:ok, updated_bet} <-
+             resolve_bet(bet, %{
+               "sets_won" => sets_won,
+               "is_self_partner" => is_self_partner,
+               "partner_game_player_id" => partner_game_player_id
+             }),
+           :ok <-
+             record_round_scores(
+               round,
+               game_players,
+               bet.game_player_id,
+               partner_game_player_id,
+               scores,
+               is_self_partner
+             ) do
+        {:ok, updated_bet}
+      end
+    end)
+  end
+
+  # ---------------------------------------------------------------------------
+  # RoundScore Functions
+  # ---------------------------------------------------------------------------
+
   def record_score(%Round{} = round, %GamePlayer{} = game_player, attrs) do
     %RoundScore{}
     |> RoundScore.changeset(
@@ -186,19 +305,37 @@ defmodule ItWhist.Games do
     |> Repo.insert()
   end
 
-  def record_scores_for_round(%Round{} = round, scores) do
-    Repo.transact(fn ->
-      Enum.each(scores, fn %{game_player_id: gp_id, score: score} ->
-        game_player = Repo.get!(GamePlayer, gp_id)
-        # ← string key
-        record_score(round, game_player, %{"score" => score})
-      end)
-    end)
-  end
-
   def update_player_score(%GamePlayer{} = game_player, points) do
     game_player
     |> GamePlayer.changeset(%{"final_score" => game_player.final_score + points})
     |> Repo.update()
+  end
+
+  # ---------------------------------------------------------------------------
+  # Private helpers
+  # ---------------------------------------------------------------------------
+
+  # Records a RoundScore and updates final_score for every player in the game.
+  defp record_round_scores(round, game_players, bidder_id, partner_id, scores, is_self_partner) do
+    Enum.each(game_players, fn gp ->
+      points = points_for_player(gp.id, bidder_id, partner_id, scores, is_self_partner)
+      record_score(round, gp, %{"score" => points})
+      update_player_score(gp, points)
+    end)
+
+    :ok
+  end
+
+  # Determines whether a given player gets winner or loser points.
+  defp points_for_player(player_id, bidder_id, _partner_id, scores, true = _self_partner) do
+    # Self-partner: bidder wins alone, everyone else loses
+    if player_id == bidder_id, do: scores.winner, else: scores.loser
+  end
+
+  defp points_for_player(player_id, bidder_id, partner_id, scores, _self_partner) do
+    # Normal: bidder + partner win, others lose
+    if player_id == bidder_id or player_id == partner_id,
+      do: scores.winner,
+      else: scores.loser
   end
 end

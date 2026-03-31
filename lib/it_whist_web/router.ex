@@ -17,19 +17,13 @@ defmodule ItWhistWeb.Router do
     plug :accepts, ["json"]
   end
 
-  scope "/", ItWhistWeb do
-    pipe_through :browser
-
-    get "/", PageController, :home
-  end
-
   # Public - anyone can view games
   scope "/", ItWhistWeb do
     pipe_through [:browser]
 
     live_session :public,
       on_mount: [{ItWhistWeb.AccountAuth, :mount_current_scope}] do
-      live "/games", GameLive.Index, :index
+      live "/", LeaderboardLive.Index, :index
     end
   end
 
@@ -65,9 +59,9 @@ defmodule ItWhistWeb.Router do
       on_mount: [{ItWhistWeb.AccountAuth, :require_authenticated}] do
       live "/accounts/settings", AccountLive.Settings, :edit
       live "/accounts/settings/confirm-email/:token", AccountLive.Settings, :confirm_email
-      # ← before :id
+      # ← add here
+      live "/games", GameLive.Index, :index
       live "/games/new", GameLive.Form, :new
-      # ← after new
       live "/games/:id", GameLive.Show, :show
       live "/games/:id/edit", GameLive.Form, :edit
       live "/games/:game_id/rounds/new", RoundLive.New, :new

@@ -2,23 +2,11 @@ defmodule ItWhist.Games.Round do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias ItWhist.Games.{Game, Bet, RoundScore}
-
-  @valid_game_types [
-    "Alm",
-    "Vip",
-    "Halve",
-    "Sans",
-    "Gode",
-    "Sol",
-    "Ren Sol",
-    "Bordlægger",
-    "Super Bordlægger"
-  ]
+  alias ItWhist.Games.{Game, Bet, RoundScore, Scoring}
 
   schema "rounds" do
     field :game_type, :string, default: "Alm"
-    field :round_number, :integer, default: 0
+    field :round_number, :integer
 
     belongs_to :game, Game
     has_one :bet, Bet
@@ -32,7 +20,7 @@ defmodule ItWhist.Games.Round do
     round
     |> cast(attrs, [:game_type, :round_number, :game_id])
     |> validate_required([:game_type, :round_number, :game_id])
-    |> validate_inclusion(:game_type, @valid_game_types)
+    |> validate_inclusion(:game_type, Scoring.all_game_types())
     |> foreign_key_constraint(:game_id)
     |> unique_constraint([:game_id, :round_number],
       name: :rounds_game_id_round_number_index
