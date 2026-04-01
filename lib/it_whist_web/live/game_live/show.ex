@@ -143,6 +143,11 @@ defmodule ItWhistWeb.GameLive.Show do
      |> push_navigate(to: ~p"/games")}
   end
 
+  def handle_info({event, %ItWhist.Games.Round{}}, socket)
+      when event in [:round_logged, :round_deleted] do
+    {:noreply, assign(socket, :game, Games.get_game!(socket.assigns.game.id))}
+  end
+
   def handle_info({type, %ItWhist.Games.Game{}}, socket)
       when type in [:created, :updated, :deleted] do
     {:noreply, socket}

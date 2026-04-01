@@ -25,11 +25,15 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/it_whist"
 import topbar from "../vendor/topbar"
 
+// Add stupid ass funny card effect
+import { CardCanvas } from "./shared.hooks"
+
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks},
+  hooks: {...colocatedHooks, CardCanvas},
 })
 
 // Show progress bar on live navigation and form submits

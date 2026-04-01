@@ -10,7 +10,9 @@ defmodule ItWhist.Games do
   alias ItWhist.Accounts.Account
 
   # TODO: implement PubSub broadcasts
-  def subscribe_games(_scope), do: :ok
+  def subscribe_games(_scope) do
+    Phoenix.PubSub.subscribe(ItWhist.PubSub, "games")
+  end
 
   # ---------------------------------------------------------------------------
   # Leaderboard Functions
@@ -120,6 +122,8 @@ defmodule ItWhist.Games do
                scores,
                is_self_partner
              ) do
+        Phoenix.PubSub.broadcast(ItWhist.PubSub, "games", {:round_logged, round})
+
         {:ok, round}
       end
     end)
@@ -135,16 +139,55 @@ defmodule ItWhist.Games do
     |> Repo.update()
   end
 
-  def complete_game(%Game{} = game, %DateTime{} = played_at) do
-    game
-    |> Game.changeset(%{"status" => "completed", "played_at" => played_at})
-    |> Repo.update()
+  def complete_game(%Game{} = game, played_at \\ nil) do
+    played_at = played_at || DateTime.utc_now()
+
+    Repo.transact(fn ->
+      with {:ok, completed_game} <-
+             game
+             |> Game.changeset(%{"status" => "completed", "played_at" => played_at})
+             |> Repo.update() do
+        settle_final_scores(completed_game)
+        Phoenix.PubSub.broadcast(ItWhist.PubSub, "games", {:game_completed, completed_game})
+
+        {:ok, completed_game}
+      end
+    end)
   end
 
-  def complete_game(%Game{} = game), do: complete_game(game, DateTime.utc_now())
+  defp settle_final_scores(%Game{} = game) do
+    game_players = Repo.all(from gp in GamePlayer, where: gp.game_id == ^game.id)
+
+    Enum.each(game_players, fn gp ->
+      total =
+        Repo.one(
+          from rs in RoundScore,
+            where: rs.game_player_id == ^gp.id,
+            join: r in Round,
+            on: r.id == rs.round_id,
+            where: r.game_id == ^game.id,
+            select: sum(rs.score)
+        ) || 0
+
+      gp
+      |> GamePlayer.changeset(%{"final_score" => total})
+      |> Repo.update!()
+    end)
+  end
+
+  # def delete_game(%Game{} = game) do
+  # Repo.delete(game)
+  # end
 
   def delete_game(%Game{} = game) do
-    Repo.delete(game)
+    case Repo.delete(game) do
+      {:ok, deleted_game} ->
+        Phoenix.PubSub.broadcast(ItWhist.PubSub, "games", {:game_deleted, deleted_game})
+        {:ok, deleted_game}
+
+      {:error, changeset} ->
+        {:error, changeset}
+    end
   end
 
   def game_owner?(%Game{} = game, %Scope{} = scope) do
@@ -197,13 +240,7 @@ defmodule ItWhist.Games do
   def get_round!(id), do: Repo.get!(Round, id)
 
   def delete_round(%Round{} = round) do
-    round_with_data = Repo.preload(round, bet: [], round_scores: [:game_player])
-
     Repo.transact(fn ->
-      Enum.each(round_with_data.round_scores, fn rs ->
-        update_player_score(rs.game_player, -rs.score)
-      end)
-
       with {:ok, _} <- Repo.delete(round) do
         Repo.all(
           from r in Round,
@@ -216,6 +253,8 @@ defmodule ItWhist.Games do
           |> Round.changeset(%{"round_number" => new_number})
           |> Repo.update!()
         end)
+
+        Phoenix.PubSub.broadcast(ItWhist.PubSub, "games", {:round_deleted, round})
 
         {:ok, round}
       end
@@ -254,7 +293,6 @@ defmodule ItWhist.Games do
     - updates the bet with sets_won, is_self_partner, partner_game_player_id
     - calculates scores via Scoring.calculate/4
     - records a RoundScore for every player in the game
-    - updates each player's running final_score
 
   Accepts a plain map with atom keys:
     %{sets_won: int, is_self_partner: bool, partner_game_player_id: int | nil}
@@ -305,12 +343,6 @@ defmodule ItWhist.Games do
     |> Repo.insert()
   end
 
-  def update_player_score(%GamePlayer{} = game_player, points) do
-    game_player
-    |> GamePlayer.changeset(%{"final_score" => game_player.final_score + points})
-    |> Repo.update()
-  end
-
   # ---------------------------------------------------------------------------
   # Private helpers
   # ---------------------------------------------------------------------------
@@ -320,7 +352,6 @@ defmodule ItWhist.Games do
     Enum.each(game_players, fn gp ->
       points = points_for_player(gp.id, bidder_id, partner_id, scores, is_self_partner)
       record_score(round, gp, %{"score" => points})
-      update_player_score(gp, points)
     end)
 
     :ok

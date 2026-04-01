@@ -59,7 +59,6 @@ defmodule ItWhistWeb.Router do
       on_mount: [{ItWhistWeb.AccountAuth, :require_authenticated}] do
       live "/accounts/settings", AccountLive.Settings, :edit
       live "/accounts/settings/confirm-email/:token", AccountLive.Settings, :confirm_email
-      # ← add here
       live "/games", GameLive.Index, :index
       live "/games/new", GameLive.Form, :new
       live "/games/:id", GameLive.Show, :show

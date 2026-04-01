@@ -5,10 +5,18 @@ defmodule ItWhistWeb.LeaderboardLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
+    if connected?(socket), do: Games.subscribe_games(socket.assigns.current_scope)
+
     {:ok,
      socket
      |> assign(:page_title, "Leaderboard")
      |> assign(:entries, leaderboard_with_rank())}
+  end
+
+  @impl true
+  def handle_info({event, _resource}, socket)
+      when event in [:game_completed, :game_deleted, :round_logged, :round_deleted] do
+    {:noreply, assign(socket, :entries, leaderboard_with_rank())}
   end
 
   @impl true
