@@ -17,16 +17,6 @@ defmodule ItWhistWeb.Router do
     plug :accepts, ["json"]
   end
 
-  # Public - anyone can view games
-  scope "/", ItWhistWeb do
-    pipe_through [:browser]
-
-    live_session :public,
-      on_mount: [{ItWhistWeb.AccountAuth, :mount_current_scope}] do
-      live "/", LeaderboardLive.Index, :index
-    end
-  end
-
   # Other scopes may use custom stacks.
   # scope "/api", ItWhistWeb do
   #   pipe_through :api
@@ -64,6 +54,7 @@ defmodule ItWhistWeb.Router do
       live "/games/:id", GameLive.Show, :show
       live "/games/:id/edit", GameLive.Form, :edit
       live "/games/:game_id/rounds/new", RoundLive.New, :new
+      live "/leaderboard", LeaderboardLive.Index, :index
     end
 
     post "/accounts/update-password", AccountSessionController, :update_password
@@ -75,6 +66,7 @@ defmodule ItWhistWeb.Router do
     live_session :require_admin,
       on_mount: [{ItWhistWeb.AccountAuth, :require_admin}] do
       live "/admin/accounts/new", AccountLive.Registration, :new
+      live "/admin/accounts/delete", AccountLive.Delete, :new
     end
   end
 
@@ -83,6 +75,7 @@ defmodule ItWhistWeb.Router do
 
     live_session :current_account,
       on_mount: [{ItWhistWeb.AccountAuth, :mount_current_scope}] do
+      live "/", PublicLive.Unregistered, :index
       live "/accounts/log-in", AccountLive.Login, :new
       live "/accounts/log-in/:token", AccountLive.Confirmation, :new
     end

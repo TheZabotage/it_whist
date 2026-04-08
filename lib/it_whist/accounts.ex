@@ -308,6 +308,35 @@ defmodule ItWhist.Accounts do
     :ok
   end
 
+  @doc """
+  Admin creates an account with just name and email.
+  No password is set. A magic link is sent so the user
+  can complete their profile on first login.
+  """
+  def admin_create_account(attrs) do
+    %Account{}
+    |> Account.admin_registration_changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def change_account_admin_registration(account, attrs \\ %{}, opts \\ []) do
+    Account.admin_registration_changeset(account, attrs, opts)
+  end
+
+  def change_account_setup(account, attrs \\ %{}, opts \\ []) do
+    Account.setup_changeset(account, attrs, Keyword.merge([hash_password: false], opts))
+  end
+
+  def complete_account_setup(account, attrs) do
+    account
+    |> Account.setup_changeset(attrs)
+    |> Repo.update()
+  end
+
+  def delete_account(%Account{} = account) do
+    Repo.delete(account)
+  end
+
   ## Token helper
 
   defp update_account_and_delete_all_tokens(changeset) do

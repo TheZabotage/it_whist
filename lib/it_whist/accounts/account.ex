@@ -133,6 +133,19 @@ defmodule ItWhist.Accounts.Account do
     false
   end
 
+  @doc """
+  A changeset for admin-created accounts.
+  Only requires name and email. No password is set — the user
+  will complete their profile via the magic link confirmation flow.
+  """
+  def admin_registration_changeset(account, attrs, opts \\ []) do
+    account
+    |> cast(attrs, [:email, :name])
+    |> validate_required([:name])
+    |> validate_length(:name, min: 2, max: 60)
+    |> validate_email(opts)
+  end
+
   def registration_changeset(account, attrs, opts \\ []) do
     account
     |> cast(attrs, [:email, :name, :nickname, :password])
@@ -141,5 +154,15 @@ defmodule ItWhist.Accounts.Account do
     |> validate_length(:nickname, min: 2, max: 30)
     |> validate_email(opts)
     |> validate_password(opts)
+  end
+
+  def setup_changeset(account, attrs, opts \\ []) do
+    account
+    |> cast(attrs, [:nickname, :password])
+    |> validate_required([:nickname])
+    |> validate_length(:nickname, min: 2, max: 30)
+    |> validate_confirmation(:password, message: "does not match password")
+    |> validate_password(opts)
+    |> put_change(:confirmed_at, DateTime.utc_now(:second))
   end
 end

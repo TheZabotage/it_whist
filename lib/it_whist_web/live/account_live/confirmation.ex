@@ -13,7 +13,52 @@ defmodule ItWhistWeb.AccountLive.Confirmation do
         </div>
 
         <.form
-          :if={!@account.confirmed_at}
+          for={@form}
+          id="login_trigger"
+          action={~p"/accounts/log-in?_action=confirmed"}
+          phx-trigger-action={@trigger_submit}
+          class="hidden"
+        >
+          <input type="hidden" name={@form[:token].name} value={@form[:token].value} />
+          <input type="hidden" name={@form[:remember_me].name} value="true" />
+        </.form>
+
+        <div :if={@new_user}>
+          <p class="text-center mb-6">
+            Hi {@account.name}! Set your password and choose a nickname to get started.
+          </p>
+          <.form
+            for={@setup_form}
+            id="setup_form"
+            phx-submit="complete_setup"
+            phx-change="validate_setup"
+          >
+            <.input
+              field={@setup_form[:password]}
+              type="password"
+              label="Password"
+              required
+            />
+            <.input
+              field={@setup_form[:password_confirmation]}
+              type="password"
+              label="Confirm password"
+              required
+            />
+            <.input
+              field={@setup_form[:nickname]}
+              type="text"
+              label="Nickname"
+              required
+            />
+            <.button phx-disable-with="Saving..." class="btn btn-primary w-full">
+              Complete setup & log in
+            </.button>
+          </.form>
+        </div>
+
+        <.form
+          :if={!@new_user && !@account.confirmed_at}
           for={@form}
           id="confirmation_form"
           phx-mounted={JS.focus_first()}
@@ -36,7 +81,7 @@ defmodule ItWhistWeb.AccountLive.Confirmation do
         </.form>
 
         <.form
-          :if={@account.confirmed_at}
+          :if={!@new_user && @account.confirmed_at}
           for={@form}
           id="login_form"
           phx-submit="submit"
@@ -64,7 +109,7 @@ defmodule ItWhistWeb.AccountLive.Confirmation do
           <% end %>
         </.form>
 
-        <p :if={!@account.confirmed_at} class="alert alert-outline mt-8">
+        <p :if={!@new_user && !@account.confirmed_at} class="alert alert-outline mt-8">
           Tip: If you prefer passwords, you can enable them in the account settings.
         </p>
       </div>
@@ -75,10 +120,19 @@ defmodule ItWhistWeb.AccountLive.Confirmation do
   @impl true
   def mount(%{"token" => token}, _session, socket) do
     if account = Accounts.get_account_by_magic_link_token(token) do
-      form = to_form(%{"token" => token}, as: "account")
+      new_user = is_nil(account.confirmed_at) && is_nil(account.hashed_password)
 
-      {:ok, assign(socket, account: account, form: form, trigger_submit: false),
-       temporary_assigns: [form: nil]}
+      setup_form =
+        if new_user, do: to_form(Accounts.change_account_setup(account), as: "account")
+
+      {:ok,
+       assign(socket,
+         account: account,
+         form: to_form(%{"token" => token}, as: "account"),
+         setup_form: setup_form,
+         new_user: new_user,
+         trigger_submit: false
+       ), temporary_assigns: [form: nil, setup_form: nil]}
     else
       {:ok,
        socket
@@ -88,7 +142,30 @@ defmodule ItWhistWeb.AccountLive.Confirmation do
   end
 
   @impl true
+  # Existing confirm/login button submit
   def handle_event("submit", %{"account" => params}, socket) do
     {:noreply, assign(socket, form: to_form(params, as: "account"), trigger_submit: true)}
+  end
+
+  # Live validation for setup form
+  def handle_event("validate_setup", %{"account" => params}, socket) do
+    changeset =
+      Accounts.change_account_setup(socket.assigns.account, params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign(socket, setup_form: to_form(changeset, as: "account"))}
+  end
+
+  # Setup form submission
+  def handle_event("complete_setup", %{"account" => params}, socket) do
+    case Accounts.complete_account_setup(socket.assigns.account, params) do
+      {:ok, _account} ->
+        # Account is now confirmed with password set.
+        # Trigger the hidden login form to complete the session via the controller.
+        {:noreply, assign(socket, trigger_submit: true)}
+
+      {:error, changeset} ->
+        {:noreply, assign(socket, setup_form: to_form(changeset, as: "account"))}
+    end
   end
 end

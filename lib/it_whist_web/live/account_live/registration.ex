@@ -11,31 +11,42 @@ defmodule ItWhistWeb.AccountLive.Registration do
       <div class="mx-auto max-w-sm">
         <div class="text-center">
           <.header>
-            Register for an account
+            Create a new account
             <:subtitle>
-              Already registered?
-              <.link navigate={~p"/accounts/log-in"} class="font-semibold text-brand hover:underline">
-                Log in
-              </.link>
-              to your account now.
+              An email will be sent to the new user with a magic link
+              to set their password and complete their profile.
             </:subtitle>
           </.header>
         </div>
 
         <.form for={@form} id="registration_form" phx-submit="save" phx-change="validate">
           <.input
-            field={@form[:email]}
-            type="email"
-            label="Email"
-            autocomplete="username"
-            spellcheck="false"
+            field={@form[:name]}
+            type="text"
+            label="Full name"
             required
             phx-mounted={JS.focus()}
           />
+          <.input
+            field={@form[:email]}
+            type="email"
+            label="Email"
+            autocomplete="off"
+            spellcheck="false"
+            required
+          />
 
           <.button phx-disable-with="Creating account..." class="btn btn-primary w-full">
-            Create an account
+            Create account & send invite
           </.button>
+
+          <div :if={local_mail_adapter?()} class="alert alert-info mt-4">
+            <.icon name="hero-information-circle" class="size-6 shrink-0" />
+            <span>
+              Dev mode: check <.link href="/dev/mailbox" class="underline">the mailbox</.link>
+              for sent emails.
+            </span>
+          </div>
         </.form>
       </div>
     </Layouts.app>
@@ -43,20 +54,14 @@ defmodule ItWhistWeb.AccountLive.Registration do
   end
 
   @impl true
-  def mount(_params, _session, %{assigns: %{current_scope: %{account: account}}} = socket)
-      when not is_nil(account) do
-    {:ok, redirect(socket, to: ItWhistWeb.AccountAuth.signed_in_path(socket))}
-  end
-
   def mount(_params, _session, socket) do
-    changeset = Accounts.change_account_email(%Account{}, %{}, validate_unique: false)
-
+    changeset = Accounts.change_account_admin_registration(%Account{})
     {:ok, assign_form(socket, changeset), temporary_assigns: [form: nil]}
   end
 
   @impl true
   def handle_event("save", %{"account" => account_params}, socket) do
-    case Accounts.register_account(account_params) do
+    case Accounts.admin_create_account(account_params) do
       {:ok, account} ->
         {:ok, _} =
           Accounts.deliver_login_instructions(
@@ -68,9 +73,9 @@ defmodule ItWhistWeb.AccountLive.Registration do
          socket
          |> put_flash(
            :info,
-           "An email was sent to #{account.email}, please access it to confirm your account."
+           "Account created. An invite email has been sent to #{account.email}."
          )
-         |> push_navigate(to: ~p"/accounts/log-in")}
+         |> push_navigate(to: ~p"/admin/accounts/new")}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign_form(socket, changeset)}
@@ -78,12 +83,20 @@ defmodule ItWhistWeb.AccountLive.Registration do
   end
 
   def handle_event("validate", %{"account" => account_params}, socket) do
-    changeset = Accounts.change_account_email(%Account{}, account_params, validate_unique: false)
-    {:noreply, assign_form(socket, Map.put(changeset, :action, :validate))}
+    changeset =
+      Accounts.change_account_admin_registration(%Account{}, account_params,
+        validate_unique: false
+      )
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign_form(socket, changeset)}
   end
 
   defp assign_form(socket, %Ecto.Changeset{} = changeset) do
-    form = to_form(changeset, as: "account")
-    assign(socket, form: form)
+    assign(socket, form: to_form(changeset, as: "account"))
+  end
+
+  defp local_mail_adapter? do
+    Application.get_env(:it_whist, ItWhist.Mailer)[:adapter] == Swoosh.Adapters.Local
   end
 end

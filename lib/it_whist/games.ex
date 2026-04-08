@@ -175,10 +175,6 @@ defmodule ItWhist.Games do
     end)
   end
 
-  # def delete_game(%Game{} = game) do
-  # Repo.delete(game)
-  # end
-
   def delete_game(%Game{} = game) do
     case Repo.delete(game) do
       {:ok, deleted_game} ->
@@ -341,6 +337,23 @@ defmodule ItWhist.Games do
       })
     )
     |> Repo.insert()
+  end
+
+  @doc """
+  Returns a map of game_player_id => running score total
+  by summing RoundScore records for the game.
+  Used to display live scores for in-progress games.
+  """
+  def running_scores(%Game{id: game_id}) do
+    Repo.all(
+      from rs in RoundScore,
+        join: r in Round,
+        on: r.id == rs.round_id,
+        where: r.game_id == ^game_id,
+        group_by: rs.game_player_id,
+        select: {rs.game_player_id, sum(rs.score)}
+    )
+    |> Map.new()
   end
 
   # ---------------------------------------------------------------------------

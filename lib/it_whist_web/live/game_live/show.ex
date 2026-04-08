@@ -24,10 +24,19 @@ defmodule ItWhistWeb.GameLive.Show do
 
       <div class="mt-6">
         <h2 class="text-lg font-semibold mb-2">Players</h2>
-        <.table id="players" rows={Enum.sort_by(@game.game_players, & &1.final_score, :desc)}>
+        <.table
+          id="players"
+          rows={Enum.sort_by(@game.game_players, &Map.get(@running_scores, &1.id, 0), :desc)}
+        >
           <:col :let={gp} label="Nickname">{gp.player.nickname}</:col>
           <:col :let={gp} label="Name">{gp.player.name}</:col>
-          <:col :let={gp} label="Score">{gp.final_score}</:col>
+          <:col :let={gp} label="Score">
+            <%= if @game.status == "completed" do %>
+              {gp.final_score}
+            <% else %>
+              {Map.get(@running_scores, gp.id, 0)}
+            <% end %>
+          </:col>
         </.table>
       </div>
 
@@ -102,10 +111,13 @@ defmodule ItWhistWeb.GameLive.Show do
       Games.subscribe_games(socket.assigns.current_scope)
     end
 
+    game = Games.get_game!(id)
+
     {:ok,
      socket
      |> assign(:page_title, "Show Game")
-     |> assign(:game, Games.get_game!(id))}
+     |> assign(:game, game)
+     |> assign(:running_scores, Games.running_scores(game))}
   end
 
   @impl true
@@ -113,7 +125,7 @@ defmodule ItWhistWeb.GameLive.Show do
     with_owner_check(socket, fn ->
       round = Games.get_round!(id)
       {:ok, _} = Games.delete_round(round)
-      {:noreply, assign(socket, :game, Games.get_game!(socket.assigns.game.id))}
+      {:noreply, reload_game(socket)}
     end)
   end
 
@@ -121,35 +133,32 @@ defmodule ItWhistWeb.GameLive.Show do
   def handle_event("complete_game", _params, socket) do
     with_owner_check(socket, fn ->
       {:ok, _} = Games.complete_game(socket.assigns.game)
-      {:noreply, assign(socket, :game, Games.get_game!(socket.assigns.game.id))}
+      {:noreply, reload_game(socket)}
     end)
   end
 
   @impl true
-  def handle_info(
-        {:updated, %ItWhist.Games.Game{id: id} = game},
-        %{assigns: %{game: %{id: id}}} = socket
-      ) do
-    {:noreply, assign(socket, :game, game)}
+  def handle_info({:game_completed, %ItWhist.Games.Game{id: id}}, socket)
+      when id == socket.assigns.game.id do
+    {:noreply, reload_game(socket)}
   end
 
-  def handle_info(
-        {:deleted, %ItWhist.Games.Game{id: id}},
-        %{assigns: %{game: %{id: id}}} = socket
-      ) do
+  def handle_info({:game_deleted, %ItWhist.Games.Game{id: id}}, socket)
+      when id == socket.assigns.game.id do
     {:noreply,
      socket
-     |> put_flash(:error, "The current game was deleted.")
+     |> put_flash(:error, "This game was deleted.")
      |> push_navigate(to: ~p"/games")}
   end
 
   def handle_info({event, %ItWhist.Games.Round{}}, socket)
       when event in [:round_logged, :round_deleted] do
-    {:noreply, assign(socket, :game, Games.get_game!(socket.assigns.game.id))}
+    {:noreply, reload_game(socket)}
   end
 
-  def handle_info({type, %ItWhist.Games.Game{}}, socket)
-      when type in [:created, :updated, :deleted] do
+  # Ignore PubSub events for other games
+  def handle_info({event, _resource}, socket)
+      when event in [:game_completed, :game_deleted, :round_logged, :round_deleted] do
     {:noreply, socket}
   end
 
@@ -157,8 +166,14 @@ defmodule ItWhistWeb.GameLive.Show do
   # Private helpers
   # ---------------------------------------------------------------------------
 
-  # Runs the given function only if the current user owns the game,
-  # otherwise returns a permission error flash.
+  defp reload_game(socket) do
+    game = Games.get_game!(socket.assigns.game.id)
+
+    socket
+    |> assign(:game, game)
+    |> assign(:running_scores, Games.running_scores(game))
+  end
+
   defp with_owner_check(socket, fun) do
     if Games.game_owner?(socket.assigns.game, socket.assigns.current_scope) do
       fun.()

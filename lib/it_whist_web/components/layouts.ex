@@ -39,11 +39,17 @@ defmodule ItWhistWeb.Layouts do
       <div class="flex-1">
         <a href="/" class="flex-1 flex w-fit items-start gap-3">
           <img src={~p"/images/logo_itm.png"} width="75" />
+          <img src={~p"/images/logo_itw.png"} width="75" />
         </a>
       </div>
       <div class="flex-none ">
         <ul class="menu menu-horizontal text-primary w-full relative z-10 flex items-center gap-4 px-4 sm:px-6 lg:px-8 justify-end">
           <%= if @current_scope do %>
+            <%= if @current_scope.account.is_admin do %>
+              <li>
+                <.link href={~p"/admin/accounts/new"}>Admin:  Create Account</.link>
+              </li>
+            <% end %>
             <li>
               {@current_scope.account.email}
             </li>
@@ -59,22 +65,41 @@ defmodule ItWhistWeb.Layouts do
             </li>
           <% end %>
         </ul>
-        <ul class="flex flex-column px-1 space-x-4 items-center">
-          <.button variant="primary" navigate={~p"/games"}>
-            <.icon name="hero-puzzle-piece" /> All Games
-          </.button>
+        <%= if @current_scope do %>
+          <ul class="flex flex-column px-1 space-x-4 items-center">
+            <.button variant="primary" navigate={~p"/games"}>
+              <.icon name="hero-puzzle-piece" /> All Games
+            </.button>
 
-          <.button variant="primary" navigate={~p"/"}>
-            <.icon name="hero-cake" /> Leaderboard
-          </.button>
+            <.button variant="primary" navigate={~p"/leaderboard"}>
+              <.icon name="hero-cake" /> Leaderboard
+            </.button>
 
-          <.button variant="primary" navigate={~p"/games/new"}>
-            <.icon name="hero-plus" /> New Game
-          </.button>
-          <li>
-            <.theme_toggle class />
-          </li>
-        </ul>
+            <.button variant="primary" navigate={~p"/games/new"}>
+              <.icon name="hero-plus" /> New Game
+            </.button>
+            <li>
+              <.theme_toggle class />
+            </li>
+          </ul>
+        <% else %>
+          <ul class="flex flex-column px-1 space-x-4 items-center">
+            <.button variant="primary" navigate={~p"/games"}>
+              <.icon name="hero-puzzle-piece" /> All Games
+            </.button>
+
+            <.button variant="primary" navigate={~p"/leaderboard"}>
+              <.icon name="hero-cake" /> Leaderboard
+            </.button>
+
+            <.button variant="primary" navigate={~p"/games/new"}>
+              <.icon name="hero-plus" /> New Game
+            </.button>
+            <li>
+              <.theme_toggle class />
+            </li>
+          </ul>
+        <% end %>
       </div>
     </header>
 
