@@ -1,0 +1,25 @@
+.git
+.gitignore
+.DS_Store
+
+# Dev/test config
+config/dev.exs
+config/test.exs
+
+# Local deps and build artifacts
+deps/
+_build/
+priv/static/assets/
+
+# Node
+node_modules/
+assets/node_modules/
+
+# Test coverage
+cover/
+
+# Docs
+doc/
+
+# Logs
+*.log
