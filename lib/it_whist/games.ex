@@ -17,16 +17,26 @@ defmodule ItWhist.Games do
   # ---------------------------------------------------------------------------
   # Leaderboard Functions
   # ---------------------------------------------------------------------------
+  # lib/it_whist/games.ex
+
   def leaderboard do
+    max_scores =
+      from gp2 in GamePlayer,
+        group_by: gp2.game_id,
+        select: %{game_id: gp2.game_id, max_score: max(gp2.final_score)}
+
     Repo.all(
       from a in Account,
         left_join: gp in GamePlayer,
         on: gp.player_id == a.id,
+        left_join: ms in subquery(max_scores),
+        on: ms.game_id == gp.game_id,
         group_by: a.id,
         select: %{
           account: a,
           total_score: sum(gp.final_score),
-          games_played: count(gp.id)
+          games_played: count(gp.id),
+          games_won: count(fragment("CASE WHEN ? = ? THEN 1 END", gp.final_score, ms.max_score))
         },
         order_by: [desc_nulls_last: sum(gp.final_score)]
     )

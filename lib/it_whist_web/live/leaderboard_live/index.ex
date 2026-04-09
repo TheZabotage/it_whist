@@ -32,6 +32,8 @@ defmodule ItWhistWeb.LeaderboardLive.Index do
         <:col :let={entry} label="Total Score">
           {entry.total_score || "—"}
         </:col>
+        <:col :let={entry} label="Games Won">{entry.games_won}</:col>
+
         <:col :let={entry} label="Games Played">{entry.games_played}</:col>
       </.table>
     </Layouts.app>
