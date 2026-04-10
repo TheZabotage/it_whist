@@ -26,6 +26,7 @@ COPY assets assets
 COPY priv priv
 COPY lib lib
 
+RUN cd assets && npm install
 RUN mix assets.deploy
 
 # Compile app and create release
