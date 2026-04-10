@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM hexpm/elixir:1.18.3-erlang-27.3.2-debian-bookworm-20250224-slim AS build
+FROM hexpm/elixir:1.19.5-erlang-28.4.1-debian-bookworm-20250224-slim AS build
 
 # Install build deps
 RUN apt-get update -y && apt-get install -y build-essential git curl \
