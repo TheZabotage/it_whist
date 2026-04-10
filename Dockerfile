@@ -2,7 +2,7 @@
 FROM elixir:1.19.5-otp-28-slim AS build
 
 # Install build deps
-RUN apt-get update -y && apt-get install -y build-essential git curl \
+RUN apt-get update -y && apt-get install -y build-essential git curl nodejs npm \
   && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 WORKDIR /app
