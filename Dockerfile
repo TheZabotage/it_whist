@@ -56,4 +56,4 @@ COPY --from=build --chown=nobody:root /app/_build/prod/rel/it_whist ./
 USER nobody
 
 # This sets PHX_SERVER=true which tells the release to start the HTTP server
-CMD ["/app/bin/server"]
+CMD /app/bin/it_whist eval "ItWhist.Release.migrate()" && /app/bin/server
