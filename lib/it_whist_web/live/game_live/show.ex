@@ -124,16 +124,34 @@ defmodule ItWhistWeb.GameLive.Show do
   def handle_event("delete_round", %{"id" => id}, socket) do
     with_owner_check(socket, fn ->
       round = Games.get_round!(id)
-      {:ok, _} = Games.delete_round(round)
-      {:noreply, reload_game(socket)}
+
+      if round.game_id == socket.assigns.game.id do
+        case Games.delete_round(round) do
+          {:ok, _} ->
+            {:noreply, reload_game(socket)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, "Could not delete round. Please try again.")}
+        end
+      else
+        {:noreply, put_flash(socket, :error, "You don't have permission to do that.")}
+      end
     end)
   end
 
   @impl true
   def handle_event("complete_game", _params, socket) do
     with_owner_check(socket, fn ->
-      {:ok, _} = Games.complete_game(socket.assigns.game)
-      {:noreply, reload_game(socket)}
+      case Games.complete_game(socket.assigns.game) do
+        {:ok, _} ->
+          {:noreply, reload_game(socket)}
+
+        {:error, :already_completed} ->
+          {:noreply, put_flash(socket, :error, "This game is already completed.")}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Could not complete game. Please try again.")}
+      end
     end)
   end
 

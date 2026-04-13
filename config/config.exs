@@ -33,7 +33,7 @@ config :it_whist, ItWhistWeb.Endpoint,
     layout: false
   ],
   pubsub_server: ItWhist.PubSub,
-  live_view: [signing_salt: "ZKlWdRO5"]
+  live_view: [signing_salt: "uNx3FRvR6Gz9AKGpQcUG7Yva8b4vQPzX"]
 
 # Configure the mailer
 #

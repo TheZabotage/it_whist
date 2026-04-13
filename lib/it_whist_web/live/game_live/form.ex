@@ -130,14 +130,17 @@ defmodule ItWhistWeb.GameLive.Form do
   end
 
   def handle_event("select_player_" <> slot, %{"id" => id}, socket) do
-    slot = String.to_integer(slot)
-    account = Accounts.get_account!(String.to_integer(id))
-
-    {:noreply,
-     socket
-     |> assign(:"player_#{slot}_selected", account)
-     |> assign(:"player_#{slot}_results", [])
-     |> assign(:"player_#{slot}_search", "")}
+    with {slot_int, ""} <- Integer.parse(slot),
+         {id_int, ""} <- Integer.parse(id),
+         account when not is_nil(account) <- Accounts.get_account(id_int) do
+      {:noreply,
+       socket
+       |> assign(:"player_#{slot_int}_selected", account)
+       |> assign(:"player_#{slot_int}_results", [])
+       |> assign(:"player_#{slot_int}_search", "")}
+    else
+      _ -> {:noreply, put_flash(socket, :error, "Something went wrong. Please try again.")}
+    end
   end
 
   def handle_event("clear_player_" <> slot, _params, socket) do

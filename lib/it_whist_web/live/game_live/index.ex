@@ -65,8 +65,13 @@ defmodule ItWhistWeb.GameLive.Index do
     game = Games.get_game!(id)
 
     if Games.game_owner?(game, socket.assigns.current_scope) do
-      {:ok, _} = Games.delete_game(game)
-      {:noreply, stream_delete(socket, :games, game)}
+      case Games.delete_game(game) do
+        {:ok, _} ->
+          {:noreply, stream_delete(socket, :games, game)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Could not delete game. Please try again.")}
+      end
     else
       {:noreply, put_flash(socket, :error, "You don't have permission to do that.")}
     end
@@ -74,7 +79,7 @@ defmodule ItWhistWeb.GameLive.Index do
 
   @impl true
   def handle_info({type, %ItWhist.Games.Game{}}, socket)
-      when type in [:created, :updated, :deleted] do
+      when type in [:game_completed, :game_deleted] do
     {:noreply,
      stream(socket, :games, Games.list_games(socket.assigns.current_scope), reset: true)}
   end

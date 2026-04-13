@@ -8,19 +8,26 @@ defmodule ItWhistWeb.RoundLive.New do
   def mount(%{"game_id" => game_id}, _session, socket) do
     game = Games.get_game!(game_id)
 
-    {:ok,
-     socket
-     |> assign(:game, game)
-     |> assign(:stage, :bet)
-     |> assign(:page_title, "Log Round")
-     |> assign(:game_type, "Alm")
-     |> assign(:bet_params, nil)
-     |> assign(:selected_bidder_id, nil)
-     |> assign(:selected_sets_bid, nil)
-     |> assign(:selected_partner_ace, nil)
-     |> assign(:selected_trumf, nil)
-     |> assign(:is_self_partner, false)
-     |> assign(:selected_sets_won, nil)}
+    if Games.game_owner?(game, socket.assigns.current_scope) do
+      {:ok,
+       socket
+       |> assign(:game, game)
+       |> assign(:stage, :bet)
+       |> assign(:page_title, "Log Round")
+       |> assign(:game_type, "Alm")
+       |> assign(:bet_params, nil)
+       |> assign(:selected_bidder_id, nil)
+       |> assign(:selected_sets_bid, nil)
+       |> assign(:selected_partner_ace, nil)
+       |> assign(:selected_trumf, nil)
+       |> assign(:is_self_partner, false)
+       |> assign(:selected_sets_won, nil)}
+    else
+      {:ok,
+       socket
+       |> put_flash(:error, "You don't have permission to log rounds for this game.")
+       |> push_navigate(to: ~p"/games")}
+    end
   end
 
   @impl true
