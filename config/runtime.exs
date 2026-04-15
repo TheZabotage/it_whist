@@ -116,7 +116,5 @@ if config_env() == :prod do
   #     config :swoosh, :api_client, Swoosh.ApiClient.Req
   #
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
-  config :it_whist, ItWhist.Mailer,
-    adapter: Swoosh.Adapters.Resend,
-    api_key: System.get_env("RESEND_API_KEY") || "not-configured"
+  config :it_whist, ItWhist.Mailer, adapter: Swoosh.Adapters.Test
 end
