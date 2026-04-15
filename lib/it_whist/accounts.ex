@@ -23,7 +23,7 @@ defmodule ItWhist.Accounts do
 
   """
   def get_account_by_email(email) when is_binary(email) do
-    Repo.get_by(Account, email: email)
+    Repo.get_by(Account, email: email, deleted_at: nil)
   end
 
   @doc """
@@ -37,7 +37,8 @@ defmodule ItWhist.Accounts do
       from a in Account,
         where:
           (ilike(a.name, ^search) or ilike(a.nickname, ^search)) and
-            a.id not in ^exclude_ids,
+            a.id not in ^exclude_ids and
+            is_nil(a.deleted_at),
         limit: 5
     )
   end
@@ -56,7 +57,7 @@ defmodule ItWhist.Accounts do
   """
   def get_account_by_email_and_password(email, password)
       when is_binary(email) and is_binary(password) do
-    account = Repo.get_by(Account, email: email)
+    account = Repo.get_by(Account, email: email, deleted_at: nil)
     if Account.valid_password?(account, password), do: account
   end
 
@@ -204,7 +205,14 @@ defmodule ItWhist.Accounts do
   """
   def get_account_by_session_token(token) do
     {:ok, query} = AccountToken.verify_session_token_query(token)
-    Repo.one(query)
+
+    case Repo.one(query) do
+      {%Account{deleted_at: nil} = account, token_inserted_at} ->
+        {account, token_inserted_at}
+
+      _ ->
+        nil
+    end
   end
 
   @doc """
@@ -342,7 +350,15 @@ defmodule ItWhist.Accounts do
   end
 
   def delete_account(%Account{} = account) do
-    Repo.delete(account)
+    Repo.transact(fn ->
+      with {:ok, deleted_account} <-
+             account
+             |> Account.soft_delete_changeset()
+             |> Repo.update() do
+        Repo.delete_all(from(t in AccountToken, where: t.account_id == ^account.id))
+        {:ok, deleted_account}
+      end
+    end)
   end
 
   ## Token helper

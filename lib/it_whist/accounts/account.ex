@@ -11,6 +11,7 @@ defmodule ItWhist.Accounts.Account do
     field :confirmed_at, :utc_datetime
     field :authenticated_at, :utc_datetime, virtual: true
     field :is_admin, :boolean, default: false
+    field :deleted_at, :utc_datetime
 
     timestamps(type: :utc_datetime)
   end
@@ -164,5 +165,15 @@ defmodule ItWhist.Accounts.Account do
     |> validate_confirmation(:password, message: "does not match password")
     |> validate_password(opts)
     |> put_change(:confirmed_at, DateTime.utc_now(:second))
+  end
+
+  def soft_delete_changeset(account) do
+    change(account,
+      deleted_at: DateTime.utc_now(:second),
+      hashed_password: nil,
+      email: "deleted_#{account.id}@deleted",
+      name: "Deleted User",
+      nickname: "Deleted"
+    )
   end
 end
