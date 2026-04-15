@@ -1,0 +1,35 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: ecto://postgres:${POSTGRES_PASSWORD}@db/it_whist
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      LIVE_VIEW_SALT: ${LIVE_VIEW_SALT}
+      PHX_HOST: ${PHX_HOST}
+      PHX_SERVER: "true"
+      PORT: "4000"
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: it_whist
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
