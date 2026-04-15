@@ -1,18 +1,8 @@
-# Script for populating the database. You can run it as:
-#
-#     mix run priv/repo/seeds.exs
-#
-# Inside the script, you can read and write to any of your
-# repositories directly:
-#
-#     ItWhist.Repo.insert!(%ItWhist.SomeSchema{})
-#
-# We recommend using the bang functions (`insert!`, `update!`
-# and so on) as they will fail if something goes wrong.
-
 alias ItWhist.Accounts
+alias ItWhist.Repo
+import Ecto.Changeset
 
-accounts = [
+regular_accounts = [
   %{
     email: "anders@itwhist.dk",
     name: "Anders Hansen",
@@ -39,9 +29,27 @@ accounts = [
   }
 ]
 
-Enum.each(accounts, fn attrs ->
+Enum.each(regular_accounts, fn attrs ->
   case Accounts.register_account(attrs) do
     {:ok, account} -> IO.puts("Created account: #{account.nickname}")
     {:error, changeset} -> IO.puts("Failed: #{inspect(changeset.errors)}")
   end
 end)
+
+# Admin account — set is_admin directly after creation
+case Accounts.register_account(%{
+       email: "admin@itwhist.dk",
+       name: "Admin Adminson",
+       nickname: "Admin",
+       password: "Strongpassword123"
+     }) do
+  {:ok, account} ->
+    account
+    |> change(is_admin: true)
+    |> Repo.update!()
+
+    IO.puts("Created admin account: #{account.nickname}")
+
+  {:error, changeset} ->
+    IO.puts("Failed to create admin: #{inspect(changeset.errors)}")
+end

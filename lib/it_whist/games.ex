@@ -261,21 +261,27 @@ defmodule ItWhist.Games do
   def delete_round(%Round{} = round) do
     Repo.transact(fn ->
       with {:ok, _} <- Repo.delete(round) do
-        Repo.all(
-          from r in Round,
-            where: r.game_id == ^round.game_id,
-            order_by: r.round_number
-        )
-        |> Enum.with_index(1)
-        |> Enum.each(fn {r, new_number} ->
-          r
-          |> Round.changeset(%{"round_number" => new_number})
-          |> Repo.update!()
-        end)
+        remaining_rounds =
+          Repo.all(
+            from r in Round,
+              where: r.game_id == ^round.game_id,
+              order_by: r.round_number
+          )
+          |> Enum.with_index(1)
 
-        Phoenix.PubSub.broadcast(ItWhist.PubSub, "games", {:round_deleted, round})
+        results =
+          Enum.map(remaining_rounds, fn {r, new_number} ->
+            r |> Round.changeset(%{"round_number" => new_number}) |> Repo.update()
+          end)
 
-        {:ok, round}
+        case Enum.find(results, &match?({:error, _}, &1)) do
+          nil ->
+            Phoenix.PubSub.broadcast(ItWhist.PubSub, "games", {:round_deleted, round})
+            {:ok, round}
+
+          {:error, changeset} ->
+            {:error, changeset}
+        end
       end
     end)
   end

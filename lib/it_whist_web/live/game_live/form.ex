@@ -70,12 +70,12 @@ defmodule ItWhistWeb.GameLive.Form do
       <label class="font-medium">Player {@slot}</label>
 
       <%= if @selected do %>
-        <div class="flex items-center gap-2 p-2 border rounded">
+        <div class="flex items-center gap-2 p-2 input input-bordered w-full">
           <span>{@selected.nickname} ({@selected.name})</span>
           <button
             type="button"
             phx-click={"clear_player_#{@slot}"}
-            class="text-red-500 ml-auto"
+            class="text-error ml-auto"
           >
             ✕
           </button>
@@ -88,17 +88,17 @@ defmodule ItWhistWeb.GameLive.Form do
             value={@search}
             name={"player_#{@slot}_search"}
             autocomplete="off"
-            class="w-full border rounded p-2"
+            class="input input-bordered w-full"
           />
           <%= if length(@results) > 0 do %>
-            <ul class="absolute z-10 w-full border rounded shadow bg-white top-full mt-1">
+            <ul class="absolute z-10 w-full bg-base-100 border border-base-300 rounded-box shadow-md top-full mt-1">
               <%= for account <- @results do %>
                 <li
                   phx-click={"select_player_#{@slot}"}
                   phx-value-id={account.id}
-                  class="p-2 hover:bg-gray-100 cursor-pointer"
+                  class="p-2 hover:bg-base-200 cursor-pointer"
                 >
-                  {account.nickname} — {account.name}
+                  {account.nickname} ({account.name})
                 </li>
               <% end %>
             </ul>

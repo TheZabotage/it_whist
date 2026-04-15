@@ -49,6 +49,9 @@ defmodule ItWhistWeb.Layouts do
               <li>
                 <.link href={~p"/admin/accounts/new"}>Admin:  Create Account</.link>
               </li>
+              <li>
+                <.link href={~p"/admin/accounts/delete"}>Admin:  Delete Account</.link>
+              </li>
             <% end %>
             <li>
               {@current_scope.account.email}
@@ -66,7 +69,7 @@ defmodule ItWhistWeb.Layouts do
           <% end %>
         </ul>
         <%= if @current_scope do %>
-          <ul class="flex flex-column px-1 space-x-4 items-center">
+          <ul class="flex flex-column px-1 space-x-4 items-center justify-end">
             <.button variant="primary" navigate={~p"/games"}>
               <.icon name="hero-puzzle-piece" /> All Games
             </.button>

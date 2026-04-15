@@ -49,10 +49,10 @@ defmodule ItWhistWeb.RoundLive.New do
     <form phx-submit="place_bet" phx-change="update_form" class="space-y-6">
       <div>
         <label class="font-medium">Bidder</label>
-        <select name="bet[game_player_id]" class="w-full border rounded p-2">
+        <select name="bet[game_player_id]" class="select select-bordered w-full">
           <%= for gp <- @game.game_players do %>
             <option value={gp.id} selected={to_string(gp.id) == @selected_bidder_id}>
-              {gp.player.nickname}
+              {gp.player.nickname} ({gp.player.name})
             </option>
           <% end %>
         </select>
@@ -60,7 +60,7 @@ defmodule ItWhistWeb.RoundLive.New do
 
       <div>
         <label class="font-medium">Game Type</label>
-        <select name="bet[game_type]" class="w-full border rounded p-2">
+        <select name="bet[game_type]" class="select select-bordered w-full">
           <%= for type <- Scoring.all_game_types() do %>
             <option value={type} selected={type == @game_type}>{type}</option>
           <% end %>
@@ -75,7 +75,7 @@ defmodule ItWhistWeb.RoundLive.New do
             <input type="hidden" name="bet[sets_bid]" value="0" />
           <% else %>
             <label class="font-medium">Sets Bid</label>
-            <select name="bet[sets_bid]" class="w-full border rounded p-2">
+            <select name="bet[sets_bid]" class="select select-bordered w-full">
               <option value="" disabled selected={is_nil(@selected_sets_bid)}>
                 How many tricks can you win?
               </option>
@@ -90,7 +90,7 @@ defmodule ItWhistWeb.RoundLive.New do
       <%= if Scoring.has_partner?(@game_type) do %>
         <div>
           <label class="font-medium">Partner Ace</label>
-          <select name="bet[partner_ace]" class="w-full border rounded p-2">
+          <select name="bet[partner_ace]" class="select select-bordered w-full">
             <option value="" disabled selected={is_nil(@selected_partner_ace)}>
               Choose your ace
             </option>
@@ -105,10 +105,10 @@ defmodule ItWhistWeb.RoundLive.New do
         <div>
           <label class="font-medium">Trumf</label>
           <%= if @game_type == "Gode" do %>
-            <input type="text" value="Clubs" disabled class="w-full border rounded p-2 bg-gray-100" />
+            <input type="text" value="Clubs" disabled class="w-full border rounded p-2 " />
             <input type="hidden" name="bet[trumf_suit]" value="Clubs" />
           <% else %>
-            <select name="bet[trumf_suit]" class="w-full border rounded p-2">
+            <select name="bet[trumf_suit]" class="select select-bordered w-full">
               <option value="" disabled selected={is_nil(@selected_trumf)}>
                 Choose your trumf
               </option>
@@ -123,7 +123,7 @@ defmodule ItWhistWeb.RoundLive.New do
       <%= if @game_type == "Sans" do %>
         <div>
           <label class="font-medium">Trumf</label>
-          <input type="text" value="Trumfløs" disabled class="w-full border rounded p-2 bg-gray-100" />
+          <input type="text" value="Trumfløs" disabled class="w-full border rounded p-2" />
         </div>
       <% end %>
 
@@ -140,7 +140,7 @@ defmodule ItWhistWeb.RoundLive.New do
     <div class="space-y-6">
       <% bidder = find_player(@game.game_players, parse_optional_id(@bet_params["game_player_id"])) %>
 
-      <div class="p-4 border rounded bg-gray-50">
+      <div class="p-4 border rounded">
         <p>Round: {length(@game.rounds) + 1} — {@bet_params["game_type"]}</p>
         <p>Bidder: {bidder.player.nickname}</p>
         <p>Sets bid: {@bet_params["sets_bid"]}</p>
@@ -157,7 +157,7 @@ defmodule ItWhistWeb.RoundLive.New do
           <label class="font-medium">
             How many tricks did {bidder.player.nickname} win?
           </label>
-          <select name="resolve[sets_won]" class="w-full border rounded p-2">
+          <select name="resolve[sets_won]" class="select select-bordered w-full">
             <option value="" disabled selected={is_nil(@selected_sets_won)}>
               Choose amount of tricks {bidder.player.nickname} won.
             </option>
@@ -185,7 +185,7 @@ defmodule ItWhistWeb.RoundLive.New do
           <%= if !@is_self_partner do %>
             <div>
               <label class="font-medium">Who was the partner?</label>
-              <select name="resolve[partner_game_player_id]" class="w-full border rounded p-2">
+              <select name="resolve[partner_game_player_id]" class="select select-bordered w-full">
                 <option value="" disabled selected>Choose partner</option>
                 <%= for gp <- @game.game_players,
                     gp.id != parse_optional_id(@bet_params["game_player_id"]) do %>

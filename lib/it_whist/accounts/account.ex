@@ -140,7 +140,7 @@ defmodule ItWhist.Accounts.Account do
   """
   def admin_registration_changeset(account, attrs, opts \\ []) do
     account
-    |> cast(attrs, [:email, :name])
+    |> cast(attrs, [:email, :name, :is_admin])
     |> validate_required([:name])
     |> validate_length(:name, min: 2, max: 60)
     |> validate_email(opts)

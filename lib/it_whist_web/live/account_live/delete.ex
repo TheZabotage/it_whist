@@ -58,7 +58,7 @@ defmodule ItWhistWeb.AccountLive.Delete do
       <label class="font-medium">What account should be deleted?</label>
 
       <%= if @selected do %>
-        <div class="flex items-center gap-2 p-2 border rounded">
+        <div class="flex items-center gap-2 p-2 input input-bordered w-full">
           <span>{@selected.nickname} ({@selected.name})</span>
           <button
             type="button"
@@ -79,14 +79,14 @@ defmodule ItWhistWeb.AccountLive.Delete do
             class="w-full border rounded p-2"
           />
           <%= if length(@results) > 0 do %>
-            <ul class="absolute z-10 w-full border rounded shadow bg-white top-full mt-1">
+            <ul class="absolute z-10 w-full bg-base-100 border border-base-300 rounded-box shadow-md top-full mt-1">
               <%= for account <- @results do %>
                 <li
                   phx-click="select_account"
                   phx-value-id={account.id}
-                  class="p-2 hover:bg-gray-100 cursor-pointer"
+                  class="p-2 hover:bg-base-200 cursor-pointer"
                 >
-                  {account.nickname} — {account.name}
+                  {account.nickname} ({account.name})
                 </li>
               <% end %>
             </ul>
@@ -120,13 +120,16 @@ defmodule ItWhistWeb.AccountLive.Delete do
   end
 
   def handle_event("select_account", %{"id" => id}, socket) do
-    account = Accounts.get_account!(String.to_integer(id))
-
-    {:noreply,
-     socket
-     |> assign(:account_selected, account)
-     |> assign(:account_results, [])
-     |> assign(:account_search, "")}
+    with {id_int, ""} <- Integer.parse(id),
+         account when not is_nil(account) <- Accounts.get_account(id_int) do
+      {:noreply,
+       socket
+       |> assign(:account_selected, account)
+       |> assign(:account_results, [])
+       |> assign(:account_search, "")}
+    else
+      _ -> {:noreply, put_flash(socket, :error, "Something went wrong. Please try again.")}
+    end
   end
 
   def handle_event("delete_account", _params, socket) do

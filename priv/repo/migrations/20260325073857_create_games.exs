@@ -3,7 +3,7 @@ defmodule ItWhist.Repo.Migrations.CreateGames do
 
   def change do
     create table(:games) do
-      add :status, :string, null: false, default: "in_progess"
+      add :status, :string, null: false, default: "in_progress"
       add :played_at, :utc_datetime
       add :created_by, references(:accounts, on_delete: :nothing), null: false
 

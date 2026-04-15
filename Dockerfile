@@ -27,11 +27,11 @@ COPY priv priv
 COPY lib lib
 
 RUN cd assets && npm install
+RUN mix compile
 RUN mix assets.deploy
 
 # Compile app and create release
 COPY config/runtime.exs config/
-RUN mix compile
 RUN mix release
 
 # Stage 2: Runtime (minimal image)

@@ -67,17 +67,28 @@ defmodule ItWhist.Games.Scoring do
     effective_y = if game_type in @high_game_types, do: y * 2, else: y
     diff = sets_won - sets_bid
 
-    winner_points =
+    {winner_points, loser_points} =
       cond do
-        diff == 0 and is_self_partner -> effective_y * 3
-        diff == 0 -> effective_y
-        diff > 0 and is_self_partner -> effective_y * diff * 3
-        diff > 0 -> effective_y * diff
-        diff < 0 and is_self_partner -> -(effective_y * 2 * 3 * abs(diff))
-        diff < 0 -> -(effective_y * 2 * abs(diff))
+        diff == 0 and is_self_partner ->
+          {effective_y * 3, -effective_y}
+
+        diff == 0 ->
+          {effective_y, -effective_y}
+
+        diff > 0 and is_self_partner ->
+          {effective_y * (diff + 1) * 3, -effective_y * (diff + 1)}
+
+        diff > 0 ->
+          {effective_y * (diff + 1), -effective_y * (diff + 1)}
+
+        diff < 0 and is_self_partner ->
+          {-(effective_y * 2 * 3 * abs(diff)), effective_y * 2 * abs(diff)}
+
+        diff < 0 ->
+          {-(effective_y * 2 * abs(diff)), effective_y * 2 * abs(diff)}
       end
 
-    %{winner: winner_points, loser: -winner_points}
+    %{winner: winner_points, loser: loser_points}
   end
 
   # Maps sets bid to base point value per the scoring table.

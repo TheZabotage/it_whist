@@ -1,5 +1,22 @@
 /* See the Tailwind configuration guide for advanced usage
    https://tailwindcss.com/docs/configuration */
+@font-face {
+  font-family: "Figtree";
+  src: url("/fonts/Figtree-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Figtree";
+  src: url("/fonts/Figtree-Italic-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+
 
 @import "tailwindcss";
 @source "../css";
@@ -32,7 +49,7 @@
   --color-base-content: oklch(97.807% 0.029 256.847);
   --color-primary: oklch(70% 0.2603 2.47);
   --color-primary-content: oklch(98% 0.01 2.47);
-  --color-secondary: oklch(55% 0.1352 264.18);
+  --color-secondary: oklch(20.48% 0.1352 264.18);
   --color-secondary-content: oklch(98% 0.02 264.18);
   --color-accent: oklch(90.67% 0.0224 80.68);
   --color-accent-content: oklch(20% 0.01 80.68);
@@ -103,3 +120,7 @@
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
 /* This file is for your main application CSS */
+/*Add custom fonts*/
+html {
+  font-family: "Figtree", sans-serif;
+}

@@ -311,13 +311,20 @@ defmodule ItWhist.Accounts do
 
   @doc """
   Admin creates an account with just name and email.
-  No password is set. A magic link is sent so the user
-  can complete their profile on first login.
+  No password is set. A magic link is sent so the user, by the admin,
+  so they can complete their profile on first login.
   """
   def admin_create_account(attrs) do
     %Account{}
     |> Account.admin_registration_changeset(attrs)
     |> Repo.insert()
+  end
+
+  def generate_login_link(%Account{} = account, magic_link_url_fun)
+      when is_function(magic_link_url_fun, 1) do
+    {encoded_token, account_token} = AccountToken.build_email_token(account, "login")
+    Repo.insert!(account_token)
+    {:ok, magic_link_url_fun.(encoded_token)}
   end
 
   def change_account_admin_registration(account, attrs \\ %{}, opts \\ []) do

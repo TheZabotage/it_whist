@@ -91,10 +91,7 @@ defmodule ItWhistWeb.PublicLive.Unregistered do
         <h2 class="text-xl font-bold mb-2">End of round</h2>
 
         <p class="mt-2">
-          The player with the winning bid begins the pre-game phase for their chosen game mode.
-          Once the pre-game phase is complete, the game begins with the player to the
-          <strong>left of the dealer</strong>
-          opening the first trick.
+          <strong>left of the dealer</strong> opening the first trick.
         </p>
       </div>
 
@@ -567,8 +564,7 @@ defmodule ItWhistWeb.PublicLive.Unregistered do
           7
 
         true ->
-          bid = String.to_integer(params["sets_won"] || "7")
-          if bid < 7, do: 7, else: bid
+          String.to_integer(params["sets_won"] || "7")
       end
 
     result = Scoring.calculate(game_type, sets_bid, sets_won, is_self_partner)

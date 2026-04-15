@@ -35,6 +35,11 @@ defmodule ItWhistWeb.AccountLive.Registration do
             spellcheck="false"
             required
           />
+          <.input
+            field={@form[:is_admin]}
+            type="checkbox"
+            label="Admin?"
+          />
 
           <.button phx-disable-with="Creating account..." class="btn btn-primary w-full">
             Create account & send invite
@@ -47,6 +52,25 @@ defmodule ItWhistWeb.AccountLive.Registration do
               for sent emails.
             </span>
           </div>
+
+          <%= if @generated_link do %>
+            <div class="alert alert-success">
+              <.icon name="hero-check-circle" class="size-6 shrink-0" />
+              <div class="grid grid-flow-row gap-2 justify-center justify-items-center mt-2">
+                <p>Account created. Send this link to the user:</p>
+
+                <code id="magic-link-text" class="break-all text-sm">
+                  {@generated_link}asdsadsdsadsadsddsd
+                </code>
+                <button
+                  class="btn btn-sm"
+                  phx-click={JS.dispatch("phx:copy", to: "#magic-link-text")}
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+          <% end %>
         </.form>
       </div>
     </Layouts.app>
@@ -56,26 +80,17 @@ defmodule ItWhistWeb.AccountLive.Registration do
   @impl true
   def mount(_params, _session, socket) do
     changeset = Accounts.change_account_admin_registration(%Account{})
-    {:ok, assign_form(socket, changeset), temporary_assigns: [form: nil]}
+
+    {:ok, socket |> assign(:generated_link, nil) |> assign_form(changeset),
+     temporary_assigns: [form: nil]}
   end
 
   @impl true
   def handle_event("save", %{"account" => account_params}, socket) do
     case Accounts.admin_create_account(account_params) do
       {:ok, account} ->
-        {:ok, _} =
-          Accounts.deliver_login_instructions(
-            account,
-            &url(~p"/accounts/log-in/#{&1}")
-          )
-
-        {:noreply,
-         socket
-         |> put_flash(
-           :info,
-           "Account created. An invite email has been sent to #{account.email}."
-         )
-         |> push_navigate(to: ~p"/admin/accounts/new")}
+        {:ok, url} = Accounts.generate_login_link(account, &url(~p"/accounts/log-in/#{&1}"))
+        {:noreply, assign(socket, :generated_link, url)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign_form(socket, changeset)}
