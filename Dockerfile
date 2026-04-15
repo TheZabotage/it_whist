@@ -27,7 +27,7 @@ COPY config/runtime.exs config/
 RUN mix release
 
 # Stage 2: Runtime
-FROM debian:bookworm-slim AS app
+FROM debian:trixie-slim AS app
 
 RUN apt-get update -y && \
   apt-get install -y libstdc++6 openssl libncurses5 locales ca-certificates \
