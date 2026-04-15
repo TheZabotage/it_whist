@@ -30,4 +30,5 @@ config :it_whist, ItWhistWeb.Endpoint,
 
 # Runtime production configuration, including reading
 # of environment variables, is done on config/runtime.exs.
-config :it_whist, ItWhist.Mailer, adapter: ItWhist.Mailer.NoopAdapter
+config :swoosh, :api_client, false
+config :it_whist, ItWhist.Mailer, adapter: Swoosh.Adapters.Local
