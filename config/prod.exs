@@ -20,13 +20,14 @@ config :it_whist, ItWhistWeb.Endpoint,
   ]
 
 # Configure Swoosh API Client
-config :swoosh, api_client: Swoosh.ApiClient.Req
+# config :swoosh, api_client: Swoosh.ApiClient.Req
 
 # Disable Swoosh Local Memory Storage
-config :swoosh, local: false
+# config :swoosh, local: false
 
 # Do not print debug messages in production
-config :logger, level: :info
+# config :logger, level: :info
 
 # Runtime production configuration, including reading
 # of environment variables, is done on config/runtime.exs.
+config :it_whist, ItWhist.Mailer, adapter: ItWhist.Mailer.NoopAdapter
