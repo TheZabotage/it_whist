@@ -7,7 +7,7 @@ defmodule ItWhistWeb.Endpoint do
   @session_options [
     store: :cookie,
     key: "_it_whist_key",
-    signing_salt: "d7Sdz8Qwojut1S1sX0GPU1zpk8w9BGay",
+    signing_salt: Application.compile_env!(:it_whist, :session_signing_salt),
     same_site: "Lax"
   ]
 

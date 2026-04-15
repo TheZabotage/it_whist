@@ -32,8 +32,7 @@ config :it_whist, ItWhistWeb.Endpoint,
     formats: [html: ItWhistWeb.ErrorHTML, json: ItWhistWeb.ErrorJSON],
     layout: false
   ],
-  pubsub_server: ItWhist.PubSub,
-  live_view: [signing_salt: "uNx3FRvR6Gz9AKGpQcUG7Yva8b4vQPzX"]
+  pubsub_server: ItWhist.PubSub
 
 # Configure the mailer
 #
@@ -72,6 +71,9 @@ config :logger, :default_formatter,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
+
+# Configure the session signing salt
+config :it_whist, :session_signing_salt, "dev-session-salt-replace-in-prod"
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

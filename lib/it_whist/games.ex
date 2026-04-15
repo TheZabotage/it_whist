@@ -163,8 +163,8 @@ defmodule ItWhist.Games do
         with {:ok, completed_game} <-
                game
                |> Game.changeset(%{"status" => "completed", "played_at" => played_at})
-               |> Repo.update() do
-          settle_final_scores(completed_game)
+               |> Repo.update(),
+             :ok <- settle_final_scores(completed_game) do
           {:ok, completed_game}
         end
       end)
@@ -190,12 +190,13 @@ defmodule ItWhist.Games do
 
     game_players = Repo.all(from gp in GamePlayer, where: gp.game_id == ^game.id)
 
-    Enum.each(game_players, fn gp ->
+    Enum.reduce_while(game_players, :ok, fn gp, :ok ->
       total = Map.get(scores, gp.id, 0)
 
-      gp
-      |> GamePlayer.changeset(%{"final_score" => total})
-      |> Repo.update!()
+      case gp |> GamePlayer.changeset(%{"final_score" => total}) |> Repo.update() do
+        {:ok, _} -> {:cont, :ok}
+        {:error, changeset} -> {:halt, {:error, changeset}}
+      end
     end)
   end
 
